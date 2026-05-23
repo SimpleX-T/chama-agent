@@ -56,16 +56,18 @@ export const chamaAbi = parseAbi([
   "event ChamaCompleted()",
 ]);
 
-export const erc20Abi = parseAbi([
+const erc20Signatures = [
   "function balanceOf(address) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
-]);
+] as const;
+
+export const erc20Abi = parseAbi(erc20Signatures);
 
 export const mockCUSDAbi = parseAbi([
-  ...erc20Abi.map((x) => x as any),
+  ...erc20Signatures,
   "function mint(address to, uint256 amount)",
 ]);
 
