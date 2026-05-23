@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
+import { ChamasList } from "@/components/ChamasList";
 import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
@@ -69,6 +70,8 @@ export function Landing() {
       </section>
 
       <HowItWorks />
+
+      <ChamasList />
 
       <section className="px-5 sm:px-8 pb-24">
         <div className="mx-auto max-w-6xl">

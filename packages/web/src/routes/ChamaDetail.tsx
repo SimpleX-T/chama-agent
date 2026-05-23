@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { CountdownRing } from "@/components/CountdownRing";
+import { MemberActions } from "@/components/MemberActions";
 import { MemberCard } from "@/components/MemberCard";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
 import { Stat } from "@/components/Stat";
@@ -126,6 +127,14 @@ export function ChamaDetail() {
           />
         </div>
       </section>
+
+      {/* Member self-serve actions */}
+      {data && !data.completed && (
+        <section>
+          <SectionHead title="Your participation" hint="Member-side onboarding" />
+          <MemberActions chamaAddress={address} contribution={data.contribution} />
+        </section>
+      )}
 
       {/* Members */}
       <section>

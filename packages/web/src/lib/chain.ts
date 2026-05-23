@@ -28,12 +28,14 @@ export const publicClient = createPublicClient({
 
 export const CHAMA_ADDR = deployment.contracts.Chama as `0x${string}`;
 export const CUSD_ADDR = deployment.contracts.cUSD as `0x${string}`;
+export const CHAMA_FACTORY_ADDR =
+  ((deployment as any).contracts?.ChamaFactory as `0x${string}` | undefined) ?? null;
 export const AGENT_ADDR = deployment.agent as `0x${string}`;
 export const DEPLOY_MEMBERS = deployment.members as `0x${string}`[];
 export const ERC8004_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e" as `0x${string}`;
 export const ERC8004_AGENT_ID = (deployment as any).erc8004?.agentId
   ? BigInt((deployment as any).erc8004.agentId)
-  : null;
+  : 274n;
 
 export const chamaAbi = parseAbi([
   "function contribution() view returns (uint256)",
@@ -60,4 +62,21 @@ export const erc20Abi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
+]);
+
+export const mockCUSDAbi = parseAbi([
+  ...erc20Abi.map((x) => x as any),
+  "function mint(address to, uint256 amount)",
+]);
+
+export const chamaFactoryAbi = parseAbi([
+  "function token() view returns (address)",
+  "function agent() view returns (address)",
+  "function chamasCount() view returns (uint256)",
+  "function chamaAt(uint256 index) view returns (address)",
+  "function latestChamas(uint256 limit) view returns (address[])",
+  "function chamasOf(address creator) view returns (address[])",
+  "function createdAt(address chama) view returns (uint256)",
+  "function createChama(address[] members, uint256 contribution, uint256 cycleLength) returns (address)",
+  "event ChamaCreated(address indexed creator, address indexed chama, address[] members, uint256 contribution, uint256 cycleLength, uint256 index)",
 ]);
