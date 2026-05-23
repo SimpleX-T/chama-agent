@@ -64,6 +64,9 @@ contract Chama {
     /// @notice Permissionless trigger: pulls one cycle's contribution from `member`.
     /// @dev Anyone can call this; the contract only debits if `member` has
     ///      pre-approved this contract for at least `contribution` cUSD.
+    ///      If this contribution completes the cycle (every member has now
+    ///      paid in), the payout fires in the same transaction — no separate
+    ///      "executePayout" needed for the happy path.
     function contributeFor(address member) external {
         if (!isMember[member]) revert NotMember(member);
         if (currentCycle >= _members.length) revert ChamaAlreadyCompleted();
@@ -73,19 +76,28 @@ contract Chama {
         cycleContributions[currentCycle] += contribution;
         emit Contributed(member, currentCycle, contribution);
 
-        // Effects-before-interactions
         require(token.transferFrom(member, address(this), contribution), "transferFrom failed");
+
+        // Auto-advance: the contribution that completes the cycle also pushes
+        // the payout. The contributing member pays the (small) extra gas, which
+        // is fair — their action is what enabled the rotation to proceed.
+        if (cycleContributions[currentCycle] == contribution * _members.length) {
+            _executePayout();
+        }
     }
 
     /// @notice Permissionless: push the cycle's pot to the next-in-line member and advance.
-    /// @dev Callable once per cycle by anyone. Requires either all members
-    ///      contributed OR the cycle deadline elapsed (in which case the pot
-    ///      may be partial — defaulters are surfaced as Defaulted events).
-    ///      Removing access control here is safe because the contract enforces
-    ///      *who* gets paid (fixed rotation order), *how much* (only what's
-    ///      been contributed this cycle), and *when* (only after the cycle is
-    ///      ready). The agent address is preserved as event metadata only.
+    /// @dev Same as the auto-fire path above, exposed for the deadline-elapsed
+    ///      case (some member defaulted, anyone wants to advance the cycle with
+    ///      a partial pot). Removing access control is safe — the contract
+    ///      enforces *who* gets paid (fixed rotation order), *how much* (only
+    ///      what's been contributed this cycle), and *when* (only after the
+    ///      cycle is ready). The agent address is preserved as event metadata.
     function executePayout() external {
+        _executePayout();
+    }
+
+    function _executePayout() internal {
         uint256 cycle = currentCycle;
         if (cycle >= _members.length) revert ChamaAlreadyCompleted();
 

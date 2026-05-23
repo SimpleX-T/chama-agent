@@ -183,6 +183,7 @@ export function ChamaDetail() {
                 index={i}
                 address={m}
                 balance={data.balances[i]}
+                contribution={data.contribution}
                 hasContributed={data.contributedFlags[i]}
                 isCurrentPayee={!data.completed && Number(data.currentCycle) === i}
                 hasBeenPaid={data.completed || Number(data.currentCycle) > i}

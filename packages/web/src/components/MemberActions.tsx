@@ -3,7 +3,13 @@ import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ArrowRight, CheckCircle2, Coins, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { maxUint256 } from "viem";
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useBlockNumber,
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 import { CUSD_ADDR, chamaAbi, erc20Abi, mockCUSDAbi } from "@/lib/chain";
 import { cn } from "@/lib/cn";
 import { formatUnits } from "@/lib/format";
@@ -74,6 +80,16 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
 
   const { writeContract: payWrite, data: payHash, isPending: payPending } = useWriteContract();
   const { isLoading: payMining, isSuccess: payDone } = useWaitForTransactionReceipt({ hash: payHash });
+
+  // Re-read on every new block so any external action (agent, other members,
+  // someone hitting the contract from the explorer) is reflected without a
+  // page refresh.
+  const { data: blockNumber } = useBlockNumber({ watch: true });
+  useEffect(() => {
+    refetchBal();
+    refetchAllow();
+    refetchContrib();
+  }, [blockNumber, refetchBal, refetchAllow, refetchContrib]);
 
   useEffect(() => {
     if (mintDone) refetchBal();

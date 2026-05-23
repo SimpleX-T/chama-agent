@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useBlockNumber } from "wagmi";
 import { CHAMA_ADDR, CUSD_ADDR, chamaAbi, erc20Abi, publicClient } from "@/lib/chain";
 
 export type StaticConfig = {
@@ -101,47 +102,57 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
   return { ...cfg, currentCycle, currentPayee, cycleDeadline, contributedFlags, balances, potThisCycle, completed };
 }
 
-export function useChamaState(address: `0x${string}` = CHAMA_ADDR, intervalMs = 12_000) {
+export function useChamaState(address: `0x${string}` = CHAMA_ADDR) {
   const [data, setData] = useState<ChamaState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   /** True while we're still waiting for the contract to show up at this RPC */
   const [waitingForDeployment, setWaitingForDeployment] = useState(false);
+  const cfgRef = useRef<StaticConfig | null>(null);
+  const aliveRef = useRef(true);
+  const refreshTokenRef = useRef(0);
 
+  // Drive refreshes off chain head — every new block (~5s on Celo).
+  const { data: blockNumber } = useBlockNumber({ watch: true });
+
+  // Reset cached static config when the watched address changes
   useEffect(() => {
-    let alive = true;
-    let cfg: StaticConfig | null = null;
+    cfgRef.current = null;
     setData(null);
     setError(null);
     setIsLoading(true);
     setWaitingForDeployment(false);
-    const tick = async () => {
-      try {
-        if (!cfg) {
-          setWaitingForDeployment(true);
-          cfg = await readStatic(address);
-          if (!alive) return;
-          setWaitingForDeployment(false);
-        }
-        const s = await readDynamic(address, cfg);
-        if (!alive) return;
-        setData(s);
-        setError(null);
-        setIsLoading(false);
-      } catch (e: any) {
-        if (!alive) return;
-        setError(e?.shortMessage ?? e?.message?.split("\n")[0] ?? String(e));
-        setIsLoading(false);
+  }, [address]);
+
+  const tick = useCallback(async () => {
+    const myToken = ++refreshTokenRef.current;
+    try {
+      if (!cfgRef.current) {
+        setWaitingForDeployment(true);
+        cfgRef.current = await readStatic(address);
+        if (refreshTokenRef.current !== myToken && !aliveRef.current) return;
         setWaitingForDeployment(false);
       }
-    };
-    tick();
-    const id = setInterval(tick, intervalMs);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, [address, intervalMs]);
+      const s = await readDynamic(address, cfgRef.current);
+      if (!aliveRef.current) return;
+      setData(s);
+      setError(null);
+      setIsLoading(false);
+    } catch (e: any) {
+      if (!aliveRef.current) return;
+      setError(e?.shortMessage ?? e?.message?.split("\n")[0] ?? String(e));
+      setIsLoading(false);
+      setWaitingForDeployment(false);
+    }
+  }, [address]);
 
-  return { data, error, isLoading, waitingForDeployment };
+  useEffect(() => {
+    aliveRef.current = true;
+    void tick();
+    return () => {
+      aliveRef.current = false;
+    };
+  }, [tick, blockNumber]);
+
+  return { data, error, isLoading, waitingForDeployment, refresh: tick };
 }

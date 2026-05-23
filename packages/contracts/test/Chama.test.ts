@@ -24,8 +24,8 @@ describe("Chama", () => {
     return { chama, cUSD, agent, alice, bob, carol, stranger };
   }
 
-  it("runs a full 3-cycle rotation, paying each member once in order", async () => {
-    const { chama, cUSD, agent, alice, bob, carol } = await deploy();
+  it("runs a full 3-cycle rotation with auto-payout firing on the last contribution", async () => {
+    const { chama, cUSD, alice, bob, carol } = await deploy();
 
     const payouts: Array<[any, any]> = [
       [alice, 0],
@@ -34,21 +34,19 @@ describe("Chama", () => {
     ];
 
     for (const [payee, cycle] of payouts) {
-      for (const u of [alice, bob, carol]) {
-        await chama.contributeFor(u.address);
-      }
       const before = await cUSD.balanceOf(payee.address);
-      await expect(chama.connect(agent).executePayout())
-        .to.emit(chama, "PayoutExecuted")
-        .withArgs(payee.address, cycle, CONTRIB * 3n);
-      expect(await cUSD.balanceOf(payee.address)).to.equal(before + CONTRIB * 3n);
+      // The LAST contributeFor of the cycle auto-advances — no separate executePayout needed
+      await chama.contributeFor(alice.address);
+      await chama.contributeFor(bob.address);
+      const tx = await chama.contributeFor(carol.address);
+      await expect(tx).to.emit(chama, "PayoutExecuted").withArgs(payee.address, cycle, CONTRIB * 3n);
+      // Payee contributed once (-CONTRIB) and received the full pot (+3*CONTRIB),
+      // so the net change against the pre-cycle balance is +2 * CONTRIB.
+      expect((await cUSD.balanceOf(payee.address)) - before).to.equal(CONTRIB * 2n);
     }
 
     expect(await chama.currentCycle()).to.equal(3);
-    await expect(chama.connect(agent).executePayout()).to.be.revertedWithCustomError(
-      chama,
-      "ChamaAlreadyCompleted",
-    );
+    await expect(chama.executePayout()).to.be.revertedWithCustomError(chama, "ChamaAlreadyCompleted");
   });
 
   it("advances on deadline with a partial pot and emits Defaulted for missing members", async () => {
@@ -84,13 +82,16 @@ describe("Chama", () => {
     );
   });
 
-  it("executePayout is permissionless once the cycle is ready", async () => {
+  it("executePayout is permissionless on the deadline-elapsed path (partial pot)", async () => {
     const { chama, alice, bob, carol, stranger } = await deploy();
-    for (const u of [alice, bob, carol]) await chama.contributeFor(u.address);
+    await chama.contributeFor(alice.address); // only alice paid in
+    await time.increase(ONE_WEEK + 1);
     // a wallet that's neither the agent nor a member can advance the cycle
     await expect(chama.connect(stranger).executePayout())
       .to.emit(chama, "PayoutExecuted")
-      .withArgs(alice.address, 0, CONTRIB * 3n);
+      .withArgs(alice.address, 0, CONTRIB)
+      .and.to.emit(chama, "Defaulted").withArgs(bob.address, 0)
+      .and.to.emit(chama, "Defaulted").withArgs(carol.address, 0);
   });
 
   it("executePayout still reverts before the cycle is ready, regardless of caller", async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBlockNumber } from "wagmi";
 import { chamaAbi, publicClient } from "@/lib/chain";
 
 export type ActivityKind = "Contributed" | "PayoutExecuted" | "CycleAdvanced" | "Defaulted" | "ChamaCompleted";
@@ -78,13 +79,14 @@ async function readActivity(address: `0x${string}`): Promise<ActivityEvent[]> {
     .slice(0, 24);
 }
 
-export function useChamaActivity(address: `0x${string}`, intervalMs = 15_000) {
+export function useChamaActivity(address: `0x${string}`) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { data: blockNumber } = useBlockNumber({ watch: true });
 
   useEffect(() => {
     let alive = true;
-    const tick = async () => {
+    (async () => {
       try {
         const e = await readActivity(address);
         if (!alive) return;
@@ -94,14 +96,11 @@ export function useChamaActivity(address: `0x${string}`, intervalMs = 15_000) {
         if (!alive) return;
         setError(e?.shortMessage ?? e?.message?.split("\n")[0] ?? String(e));
       }
-    };
-    tick();
-    const id = setInterval(tick, intervalMs);
+    })();
     return () => {
       alive = false;
-      clearInterval(id);
     };
-  }, [address, intervalMs]);
+  }, [address, blockNumber]);
 
   return { events, error };
 }

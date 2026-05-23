@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBlockNumber } from "wagmi";
 import { CHAMA_FACTORY_ADDR, chamaFactoryAbi, publicClient } from "@/lib/chain";
 
 export type FactoryChama = {
@@ -6,10 +7,11 @@ export type FactoryChama = {
   createdAt: bigint;
 };
 
-export function useFactoryChamas(limit = 24, intervalMs = 20_000) {
+export function useFactoryChamas(limit = 24) {
   const [data, setData] = useState<FactoryChama[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { data: blockNumber } = useBlockNumber({ watch: true });
 
   useEffect(() => {
     if (!CHAMA_FACTORY_ADDR) {
@@ -17,7 +19,7 @@ export function useFactoryChamas(limit = 24, intervalMs = 20_000) {
       return;
     }
     let alive = true;
-    const tick = async () => {
+    (async () => {
       try {
         const addrs = (await publicClient.readContract({
           address: CHAMA_FACTORY_ADDR,
@@ -47,14 +49,11 @@ export function useFactoryChamas(limit = 24, intervalMs = 20_000) {
         setError(e?.shortMessage ?? e?.message?.split("\n")[0] ?? String(e));
         setIsLoading(false);
       }
-    };
-    tick();
-    const id = setInterval(tick, intervalMs);
+    })();
     return () => {
       alive = false;
-      clearInterval(id);
     };
-  }, [limit, intervalMs]);
+  }, [limit, blockNumber]);
 
   return { data, isLoading, error };
 }
