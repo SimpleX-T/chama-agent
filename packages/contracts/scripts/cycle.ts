@@ -32,13 +32,44 @@ async function main() {
   const deployment = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, "..", "deployments", `${chainId}.json`), "utf-8"),
   );
+
+  // --list: dump every chama from the factory, then exit
+  if (process.argv.includes("--list") || process.env.LIST) {
+    await listChamas(deployment);
+    return;
+  }
+
   const chamaAddr = (process.env.CHAMA_ADDRESS as `0x${string}`) || (deployment.contracts.Chama as `0x${string}`);
   if (!/^0x[0-9a-fA-F]{40}$/.test(chamaAddr)) {
     throw new Error(`Invalid chama address: ${chamaAddr}`);
   }
 
+  // Pre-flight: confirm there's actually a Chama contract at this address.
+  const code = await ethers.provider.getCode(chamaAddr);
+  if (!code || code === "0x") {
+    console.error(`\n✗ No contract found at ${chamaAddr}.`);
+    console.error(`\n  That's an EOA (a regular wallet), not the chama contract you're trying to operate.`);
+    console.error(`  The chama address is what shows in your browser URL when you're on /chama/<addr>,`);
+    console.error(`  or in the "Contracts" section at the bottom of the chama detail page.\n`);
+    console.error(`  Run with --list to see every chama deployed by the factory:`);
+    console.error(`    pnpm --filter @chama/contracts cycle:sepolia --list\n`);
+    process.exit(1);
+  }
+
   const [deployer] = await ethers.getSigners();
   const chama = await ethers.getContractAt("Chama", chamaAddr);
+
+  // Smoke test the ABI: if memberCount() doesn't decode, this isn't a Chama
+  let memberCountTest: bigint;
+  try {
+    memberCountTest = (await chama.memberCount()) as bigint;
+  } catch {
+    console.error(`\n✗ ${chamaAddr} has bytecode but doesn't expose Chama's ABI.`);
+    console.error(`  Make sure you're passing a Chama (not a MockCUSD, ChamaFactory, etc.).\n`);
+    process.exit(1);
+  }
+  void memberCountTest;
+
   const tokenAddr = (await chama.token()) as string;
   const cUSD = await ethers.getContractAt("MockCUSD", tokenAddr);
   const members = (await chama.members()) as string[];
@@ -155,6 +186,40 @@ async function main() {
 
 function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+async function listChamas(deployment: any) {
+  const factoryAddr = deployment.contracts?.ChamaFactory;
+  if (!factoryAddr) {
+    console.error("No ChamaFactory in deployment.json. Deploy one first:");
+    console.error("  pnpm --filter @chama/contracts deploy-factory:sepolia");
+    return;
+  }
+  const factory = await ethers.getContractAt("ChamaFactory", factoryAddr);
+  const count = (await factory.chamasCount()) as bigint;
+  console.log(`\n=== Chamas from factory ${factoryAddr} (${count.toString()} total) ===\n`);
+  if (count === 0n) {
+    console.log("  No chamas yet. Create one via the dashboard (/create) and try again.\n");
+    return;
+  }
+  const addrs = (await factory.latestChamas(count > 20n ? 20n : count)) as readonly string[];
+  for (const addr of addrs) {
+    try {
+      const chama = await ethers.getContractAt("Chama", addr);
+      const [memberCount, currentCycle, contribution] = (await Promise.all([
+        chama.memberCount(),
+        chama.currentCycle(),
+        chama.contribution(),
+      ])) as [bigint, bigint, bigint];
+      const completed = currentCycle >= memberCount;
+      console.log(
+        `  ${addr}  · ${memberCount} members · ${(Number(contribution) / 1e18).toFixed(2)} mcUSD/cycle · cycle ${currentCycle}/${memberCount}${completed ? " (completed)" : ""}`,
+      );
+    } catch {
+      console.log(`  ${addr}  · (failed to read — skipped)`);
+    }
+  }
+  console.log(`\n  Run with: CHAMA_ADDRESS=0x... pnpm --filter @chama/contracts cycle:sepolia\n`);
 }
 
 main().catch((e) => {
