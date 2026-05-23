@@ -65,12 +65,24 @@ async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
 }
 
 async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<ChamaState> {
-  const [currentCycle, currentPayee, cycleDeadline, isActive] = (await Promise.all([
+  const [currentCycle, currentPayee, cycleDeadline] = (await Promise.all([
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentCycle" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentPayee" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "cycleDeadline" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "isCycleActive" }),
-  ])) as [bigint, `0x${string}`, bigint, boolean];
+  ])) as [bigint, `0x${string}`, bigint];
+
+  // isCycleActive was added in the v6 bytecode. Older chamas don't expose it;
+  // fall back to inferring from the deadline (>0 == something is ticking).
+  let isActive: boolean;
+  try {
+    isActive = (await publicClient.readContract({
+      address: addr,
+      abi: chamaAbi,
+      functionName: "isCycleActive",
+    })) as boolean;
+  } catch {
+    isActive = cycleDeadline > 0n;
+  }
 
   const completed = currentCycle >= cfg.memberCount;
   const cycle = completed ? cfg.memberCount - 1n : currentCycle;
