@@ -14,6 +14,7 @@
     "demo:sepolia": "hardhat run scripts/demo.ts --network celoSepolia",
     "setup:sepolia": "hardhat run scripts/setup-members.ts --network celoSepolia",
     "inspect:sepolia": "hardhat run scripts/inspect.ts --network celoSepolia",
+    "cycle:sepolia": "hardhat run scripts/cycle.ts --network celoSepolia",
     "verify:sepolia": "hardhat verify --network celoSepolia",
     "gen-wallet": "tsx scripts/gen-wallet.ts",
     "register-agent": "tsx scripts/register-agent.ts"
