@@ -16,6 +16,14 @@ const cycleLengthPresets: Preset[] = [
   { label: "1 day", seconds: 24 * 60 * 60 },
   { label: "1 week", seconds: 7 * 24 * 60 * 60 },
 ];
+const openTimeoutPresets: Preset[] = [
+  { label: "2 min (demo)", seconds: 2 * 60 },
+  { label: "1 hour", seconds: 60 * 60 },
+  { label: "1 day", seconds: 24 * 60 * 60 },
+  { label: "7 days", seconds: 7 * 24 * 60 * 60 },
+  { label: "30 days", seconds: 30 * 24 * 60 * 60 },
+  { label: "Never", seconds: 0 },
+];
 
 export function CreateChamaForm() {
   const navigate = useNavigate();
@@ -23,6 +31,7 @@ export function CreateChamaForm() {
   const [members, setMembers] = useState<string[]>(["", "", ""]);
   const [contribution, setContribution] = useState("1");
   const [cycleSeconds, setCycleSeconds] = useState(cycleLengthPresets[0].seconds);
+  const [openTimeoutSeconds, setOpenTimeoutSeconds] = useState(openTimeoutPresets[0].seconds);
 
   const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
   const { isLoading: isMining, isSuccess, data: receipt, error: waitError } = useWaitForTransactionReceipt({ hash: txHash });
@@ -74,7 +83,12 @@ export function CreateChamaForm() {
       address: CHAMA_FACTORY_ADDR,
       abi: chamaFactoryAbi,
       functionName: "createChama",
-      args: [validation.nonEmpty as `0x${string}`[], valueWei, BigInt(cycleSeconds)],
+      args: [
+        validation.nonEmpty as `0x${string}`[],
+        valueWei,
+        BigInt(cycleSeconds),
+        BigInt(openTimeoutSeconds),
+      ],
     });
   }
 
@@ -216,7 +230,7 @@ export function CreateChamaForm() {
 
         <div className="surface p-6 space-y-3">
           <label className="text-xs uppercase tracking-[0.14em] text-[var(--color-fg-subtle)] font-medium">
-            Cycle length
+            Active-phase length
           </label>
           <div className="flex flex-wrap gap-1.5">
             {cycleLengthPresets.map((p) => {
@@ -238,7 +252,47 @@ export function CreateChamaForm() {
               );
             })}
           </div>
+          <p className="text-[11px] text-[var(--color-fg-subtle)] leading-snug">
+            How long the countdown ticks once <span className="text-[var(--color-fg-muted)]">every</span>{" "}
+            member has paid in. The pot lands in the next payee at the end of this window.
+          </p>
         </div>
+      </section>
+
+      <section className="surface p-6 space-y-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <label className="text-xs uppercase tracking-[0.14em] text-[var(--color-fg-subtle)] font-medium">
+            Contribution window (force-advance fallback)
+          </label>
+          <span className="text-[10px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+            {openTimeoutSeconds === 0 ? "Disabled — chama waits forever" : "Anyone can force-advance after this"}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {openTimeoutPresets.map((p) => {
+            const active = openTimeoutSeconds === p.seconds;
+            return (
+              <button
+                type="button"
+                key={p.seconds}
+                onClick={() => setOpenTimeoutSeconds(p.seconds)}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-xs transition",
+                  active
+                    ? "border-[var(--color-accent)]/60 bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                    : "border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-white/[0.03]",
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-[var(--color-fg-subtle)] leading-snug">
+          If the cycle stays in OPEN this long without every member contributing, anyone can force the
+          cycle to advance with whatever's been collected. Defaulters are surfaced in events; the
+          slot's payee still receives the partial pot.
+        </p>
       </section>
 
       {validation.issues.length > 0 && (

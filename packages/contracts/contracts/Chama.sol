@@ -21,6 +21,10 @@ contract Chama {
     address public immutable agent;
     uint256 public immutable contribution;
     uint256 public immutable cycleLength;
+    /// @notice How long a cycle can stay in OPEN phase before anyone may
+    ///         force-advance with whatever was collected. 0 = no force
+    ///         advance (chama waits indefinitely for all contributions).
+    uint256 public immutable openTimeout;
     /// @notice Block timestamp at construction. Informational only.
     uint256 public immutable startTime;
 
@@ -30,6 +34,10 @@ contract Chama {
     mapping(uint256 => uint256) public cycleContributions;
     uint256 public currentCycle;
 
+    /// @notice The current cycle's own clock. Set in constructor, reset on
+    ///         each advance. Force-advance unlocks at
+    ///         `currentCycleOpenAt + openTimeout` (when openTimeout > 0).
+    uint256 public currentCycleOpenAt;
     /// @notice 0 = current cycle is in OPEN phase (collecting contributions).
     ///         >0 = ACTIVE phase began at this timestamp; payout unlocks at
     ///         `currentCycleActiveAt + cycleLength`.
@@ -37,14 +45,16 @@ contract Chama {
 
     event Contributed(address indexed member, uint256 indexed cycle, uint256 amount);
     event CycleActivated(uint256 indexed cycle, uint256 timestamp);
+    event Defaulted(address indexed member, uint256 indexed cycle);
     event PayoutExecuted(address indexed payee, uint256 indexed cycle, uint256 amount);
     event CycleAdvanced(uint256 indexed newCycle);
     event ChamaCompleted();
 
     error NotMember(address who);
     error AlreadyContributed();
-    error CycleNotActive();
     error ActivePhaseNotElapsed();
+    error OpenTimeoutNotElapsed();
+    error OpenTimeoutDisabled();
     error ChamaAlreadyCompleted();
     error InvalidConfig();
     error DuplicateMember(address who);
@@ -54,14 +64,17 @@ contract Chama {
         address agent_,
         address[] memory members_,
         uint256 contribution_,
-        uint256 cycleLength_
+        uint256 cycleLength_,
+        uint256 openTimeout_
     ) {
         if (members_.length < 2 || contribution_ == 0 || cycleLength_ == 0) revert InvalidConfig();
         token = IERC20(token_);
         agent = agent_;
         contribution = contribution_;
         cycleLength = cycleLength_;
+        openTimeout = openTimeout_; // 0 allowed = no force-advance possible
         startTime = block.timestamp;
+        currentCycleOpenAt = block.timestamp;
         for (uint256 i = 0; i < members_.length; i++) {
             address m = members_[i];
             if (isMember[m]) revert DuplicateMember(m);
@@ -95,28 +108,47 @@ contract Chama {
         }
     }
 
-    /// @notice Permissionless: deliver the active cycle's pot to its payee.
-    ///         Reverts unless the cycle has entered the ACTIVE phase AND the
-    ///         `cycleLength` timer has elapsed. The contract enforces the
-    ///         payout order, amount, and timing — gating the caller adds
-    ///         nothing.
+    /// @notice Permissionless: deliver the cycle's pot to its payee.
+    ///         Reverts unless either:
+    ///           a) ACTIVE path — last contribution flipped the cycle to
+    ///              ACTIVE and the `cycleLength` timer has elapsed, OR
+    ///           b) FORCE-ADVANCE path — `openTimeout` was configured > 0 at
+    ///              construction and the cycle has stayed in OPEN phase
+    ///              longer than that. The partial pot (only whatever was
+    ///              contributed) goes to the slot's payee; non-contributors
+    ///              are surfaced via Defaulted events.
+    ///         If the payee themselves defaulted, they still receive the
+    ///         partial pot — the contract just enforces the rotation. Social
+    ///         layer handles fairness beyond that.
     function executePayout() external {
         uint256 cycle = currentCycle;
         if (cycle >= _members.length) revert ChamaAlreadyCompleted();
         uint256 activeAt = currentCycleActiveAt;
-        if (activeAt == 0) revert CycleNotActive();
-        if (block.timestamp < activeAt + cycleLength) revert ActivePhaseNotElapsed();
+
+        if (activeAt > 0) {
+            // ACTIVE path
+            if (block.timestamp < activeAt + cycleLength) revert ActivePhaseNotElapsed();
+        } else {
+            // FORCE-ADVANCE path
+            if (openTimeout == 0) revert OpenTimeoutDisabled();
+            if (block.timestamp < currentCycleOpenAt + openTimeout) revert OpenTimeoutNotElapsed();
+            // Emit Defaulted for every member who didn't pay in
+            for (uint256 i = 0; i < _members.length; i++) {
+                if (!contributed[cycle][_members[i]]) emit Defaulted(_members[i], cycle);
+            }
+        }
 
         address payee = _members[cycle];
         uint256 pot = cycleContributions[cycle];
 
         currentCycle = cycle + 1;
-        currentCycleActiveAt = 0; // next cycle re-enters OPEN
+        currentCycleActiveAt = 0;
+        currentCycleOpenAt = block.timestamp;
         emit PayoutExecuted(payee, cycle, pot);
         emit CycleAdvanced(currentCycle);
         if (currentCycle == _members.length) emit ChamaCompleted();
 
-        require(token.transfer(payee, pot), "transfer failed");
+        if (pot > 0) require(token.transfer(payee, pot), "transfer failed");
     }
 
     function members() external view returns (address[] memory) {
@@ -132,12 +164,19 @@ contract Chama {
         return _members[currentCycle];
     }
 
-    /// @notice Returns 0 if the current cycle is in OPEN phase (no countdown
-    ///         yet). Otherwise returns the absolute timestamp at which the
-    ///         active phase elapses and payout becomes callable.
+    /// @notice Returns the next timestamp at which `executePayout()` will
+    ///         succeed:
+    ///         - During ACTIVE phase: `currentCycleActiveAt + cycleLength`
+    ///         - During OPEN phase with openTimeout > 0:
+    ///           `currentCycleOpenAt + openTimeout` (force-advance)
+    ///         - During OPEN phase with openTimeout = 0: returns 0
+    ///           (chama waits indefinitely for all contributions)
+    ///         - When completed: returns 0
     function cycleDeadline() external view returns (uint256) {
-        if (currentCycleActiveAt == 0) return 0;
-        return currentCycleActiveAt + cycleLength;
+        if (currentCycle >= _members.length) return 0;
+        if (currentCycleActiveAt > 0) return currentCycleActiveAt + cycleLength;
+        if (openTimeout == 0) return 0;
+        return currentCycleOpenAt + openTimeout;
     }
 
     /// @notice True when the current cycle's collection is complete and the

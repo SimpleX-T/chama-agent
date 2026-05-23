@@ -9,16 +9,16 @@
     "0x532ed8D17D06a8A9c36c3B49808B687238afb54A"
   ],
   "contracts": {
-    "MockCUSD": "0xE611466107ad336cd2edccFbf53127da5a11022a",
-    "cUSD": "0xE611466107ad336cd2edccFbf53127da5a11022a",
-    "Chama": "0xF168325e8086944423C02Cd51408263b3f763b4a",
-    "ChamaFactory": "0x48591D49f3f117186869342419b434624255AdfA"
+    "MockCUSD": "0xb62E5d50F2454BF7d46715557A474837940340D0",
+    "cUSD": "0xb62E5d50F2454BF7d46715557A474837940340D0",
+    "Chama": "0x91E568aB2037DFA754dA19D9e31138fACF6bEe15",
+    "ChamaFactory": "0xD7c7BB5cF2fbFC8b1dCc526AE1c7833F525C9aE8"
   },
   "contributionWei": "1000000000000000000",
   "cycleLengthSec": 300,
-  "deployedAt": "2026-05-23T17:26:10.840Z",
+  "deployedAt": "2026-05-23T17:42:16.922Z",
   "txHashes": {
-    "Chama": "0x277c543c6ffd08976664d489de34b0af22dc1c34ddc8b85d53962b0f730a5a3a"
+    "Chama": "0x45353bcc9f594bb55bfa6a7d8bb40b5719a8d518d533585d6312d713a17c45a3"
   },
-  "factoryDeployedAt": "2026-05-23T17:26:22.933Z"
+  "factoryDeployedAt": "2026-05-23T17:42:33.441Z"
 }

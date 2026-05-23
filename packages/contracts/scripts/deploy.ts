@@ -38,9 +38,10 @@ async function main() {
     console.log(`MockCUSD: ${cUSDAddr}`);
   }
 
-  // Demo-friendly params: 1 cUSD per cycle, 5-min cycles (lets us show a full rotation in a 90s video)
+  // Demo-friendly params: 1 cUSD per cycle, 5-min ACTIVE phase, 30-day open
   const CONTRIBUTION = ethers.parseUnits("1", 18);
   const CYCLE_LENGTH_SEC = 5 * 60;
+  const OPEN_TIMEOUT_SEC = 30 * 24 * 60 * 60;
 
   console.log("Deploying Chama…");
   const chama = await ethers.deployContract("Chama", [
@@ -49,6 +50,7 @@ async function main() {
     members,
     CONTRIBUTION,
     CYCLE_LENGTH_SEC,
+    OPEN_TIMEOUT_SEC,
   ]);
   await chama.waitForDeployment();
   const chamaAddr = await chama.getAddress();

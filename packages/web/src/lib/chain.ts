@@ -40,8 +40,10 @@ export const ERC8004_AGENT_ID = (deployment as any).erc8004?.agentId
 export const chamaAbi = parseAbi([
   "function contribution() view returns (uint256)",
   "function cycleLength() view returns (uint256)",
+  "function openTimeout() view returns (uint256)",
   "function startTime() view returns (uint256)",
   "function currentCycle() view returns (uint256)",
+  "function currentCycleOpenAt() view returns (uint256)",
   "function currentCycleActiveAt() view returns (uint256)",
   "function memberCount() view returns (uint256)",
   "function members() view returns (address[])",
@@ -53,6 +55,7 @@ export const chamaAbi = parseAbi([
   "function executePayout()",
   "event Contributed(address indexed member, uint256 indexed cycle, uint256 amount)",
   "event CycleActivated(uint256 indexed cycle, uint256 timestamp)",
+  "event Defaulted(address indexed member, uint256 indexed cycle)",
   "event PayoutExecuted(address indexed payee, uint256 indexed cycle, uint256 amount)",
   "event CycleAdvanced(uint256 indexed newCycle)",
   "event ChamaCompleted()",
@@ -81,6 +84,6 @@ export const chamaFactoryAbi = parseAbi([
   "function latestChamas(uint256 limit) view returns (address[])",
   "function chamasOf(address creator) view returns (address[])",
   "function createdAt(address chama) view returns (uint256)",
-  "function createChama(address[] members, uint256 contribution, uint256 cycleLength) returns (address)",
-  "event ChamaCreated(address indexed creator, address indexed chama, address[] members, uint256 contribution, uint256 cycleLength, uint256 index)",
+  "function createChama(address[] members, uint256 contribution, uint256 cycleLength, uint256 openTimeout) returns (address)",
+  "event ChamaCreated(address indexed creator, address indexed chama, address[] members, uint256 contribution, uint256 cycleLength, uint256 openTimeout, uint256 index)",
 ]);
