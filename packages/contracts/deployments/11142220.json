@@ -9,20 +9,14 @@
     "0x532ed8D17D06a8A9c36c3B49808B687238afb54A"
   ],
   "contracts": {
-    "MockCUSD": "0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638",
-    "cUSD": "0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638",
-    "Chama": "0xe68552774266A758c92A24Bb13F289d9360276aC"
+    "MockCUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
+    "cUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
+    "Chama": "0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8"
   },
   "contributionWei": "1000000000000000000",
   "cycleLengthSec": 300,
-  "deployedAt": "2026-05-22T23:56:22.139Z",
+  "deployedAt": "2026-05-23T01:11:56.193Z",
   "txHashes": {
-    "Chama": "0x9f3cedac4343e07c092d749c96eefd2d31eb649437880f07a9a85c0fae6ea7a8"
-  },
-  "erc8004": {
-    "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-    "agentId": "274",
-    "agentURI": "https://raw.githubusercontent.com/SimpleX-T/chama-agent/main/packages/contracts/agent-card.json",
-    "txHash": "0xc93704898c996202109c1567985db6fa8eb5e81702870a087657c90fc88bd04e"
+    "Chama": "0xc09c5fd1ce39a98fdb70f7dfa95f8f97f93fab6c738d711a57e87ef4481d12e9"
   }
 }

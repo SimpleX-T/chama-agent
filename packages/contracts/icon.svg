@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" rx="48" fill="#09090b"/>
+  <!-- Three member nodes arranged in a triangle -->
+  <circle cx="200" cy="110" r="38" fill="#FCD34D"/>
+  <circle cx="116" cy="256" r="38" fill="#FCD34D"/>
+  <circle cx="284" cy="256" r="38" fill="#FCD34D"/>
+  <!-- Rotation arrows between nodes -->
+  <path d="M 232 132 Q 290 200 270 230" stroke="#FCD34D" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <polygon points="266,222 274,236 261,237" fill="#FCD34D"/>
+  <path d="M 130 230 Q 110 200 168 132" stroke="#FCD34D" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <polygon points="172,140 159,138 166,127" fill="#FCD34D"/>
+  <path d="M 240 264 L 160 264" stroke="#FCD34D" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <polygon points="166,260 156,264 166,268" fill="#FCD34D"/>
+  <!-- Label -->
+  <text x="200" y="346" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="800" text-anchor="middle" fill="#fafafa">ChamaAgent</text>
+</svg>
