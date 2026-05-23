@@ -11,6 +11,8 @@ type Props = {
   contribution: bigint;
   completed?: boolean;
   isActive?: boolean;
+  rounds?: bigint;
+  totalCycles?: bigint;
   size?: number;
 };
 
@@ -32,6 +34,8 @@ export function RotationVisualizer({
   contribution,
   completed,
   isActive,
+  rounds,
+  totalCycles,
   size = 560,
 }: Props) {
   const N = Number(memberCount);
@@ -46,7 +50,10 @@ export function RotationVisualizer({
     });
   }, [members.length, N, radius, center]);
 
-  const payeeIdx = !completed && currentCycle < BigInt(N) ? Number(currentCycle) : -1;
+  const totalN = totalCycles ? Number(totalCycles) : N;
+  const payeeIdx = !completed && currentCycle < BigInt(totalN) ? Number(currentCycle % BigInt(N)) : -1;
+  const roundsN = rounds ? Number(rounds) : 1;
+  const roundIdx = N > 0 ? Math.floor(Number(currentCycle) / N) : 0;
   const paidCount = contributedFlags.filter(Boolean).length;
   const cycleActive = !!isActive;
 
@@ -444,11 +451,18 @@ export function RotationVisualizer({
       </svg>
 
       {/* Corner: cycle */}
-      <div className="pointer-events-none absolute top-1 left-1 surface-tile px-3 py-1.5 text-xs">
-        <span className="text-[var(--color-fg-subtle)] mr-2">CYCLE</span>
-        <span className="nums">
-          {completed ? "—" : currentCycle.toString()} / {memberCount.toString()}
-        </span>
+      <div className="pointer-events-none absolute top-1 left-1 surface-tile px-3 py-1.5 text-xs space-y-0.5">
+        <div>
+          <span className="text-[var(--color-fg-subtle)] mr-2">CYCLE</span>
+          <span className="nums">
+            {completed ? "—" : currentCycle.toString()} / {totalN}
+          </span>
+        </div>
+        {roundsN > 1 && !completed && (
+          <div className="text-[10px] text-[var(--color-fg-subtle)]">
+            round {Math.min(roundIdx + 1, roundsN)} / {roundsN}
+          </div>
+        )}
       </div>
 
       {/* Corner: contribution amount */}

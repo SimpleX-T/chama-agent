@@ -7,7 +7,7 @@ describe("Chama", () => {
   const OPEN_TIMEOUT = 30 * 24 * 60 * 60; // 30 days — force-advance fallback
   const CONTRIB = ethers.parseUnits("20", 18); // 20 cUSD
 
-  async function deploy(openTimeout = OPEN_TIMEOUT) {
+  async function deploy(openTimeout = OPEN_TIMEOUT, rounds = 1) {
     const [agent, alice, bob, carol, stranger] = await ethers.getSigners();
     const cUSD = await ethers.deployContract("MockCUSD");
     const chama = await ethers.deployContract("Chama", [
@@ -17,10 +17,11 @@ describe("Chama", () => {
       CONTRIB,
       CYCLE,
       openTimeout,
+      rounds,
     ]);
     const chamaAddr = await chama.getAddress();
     for (const u of [alice, bob, carol]) {
-      await cUSD.mint(u.address, CONTRIB * 10n);
+      await cUSD.mint(u.address, CONTRIB * 20n);
       await cUSD.connect(u).approve(chamaAddr, ethers.MaxUint256);
     }
     return { chama, cUSD, agent, alice, bob, carol, stranger };
@@ -169,12 +170,41 @@ describe("Chama", () => {
     );
   });
 
+  it("runs multiple rounds — payee rotation wraps modulo memberCount", async () => {
+    const { chama, alice, bob, carol } = await deploy(OPEN_TIMEOUT, 2); // 2 rounds × 3 members = 6 cycles
+
+    expect(await chama.totalCycles()).to.equal(6);
+    const expectedPayees = [alice, bob, carol, alice, bob, carol];
+
+    for (let cycle = 0; cycle < 6; cycle++) {
+      expect(await chama.currentRound()).to.equal(Math.floor(cycle / 3));
+      await chama.contributeFor(alice.address);
+      await chama.contributeFor(bob.address);
+      await chama.contributeFor(carol.address);
+      await time.increase(CYCLE);
+      await expect(chama.executePayout())
+        .to.emit(chama, "PayoutExecuted")
+        .withArgs(expectedPayees[cycle].address, cycle, CONTRIB * 3n);
+    }
+
+    expect(await chama.currentCycle()).to.equal(6);
+    await expect(chama.executePayout()).to.be.revertedWithCustomError(chama, "ChamaAlreadyCompleted");
+  });
+
   it("rejects invalid construction", async () => {
     const [agent, alice] = await ethers.getSigners();
     const cUSD = await ethers.deployContract("MockCUSD");
     const Chama = await ethers.getContractFactory("Chama");
     await expect(
-      Chama.deploy(await cUSD.getAddress(), agent.address, [alice.address], CONTRIB, CYCLE, OPEN_TIMEOUT),
+      Chama.deploy(
+        await cUSD.getAddress(),
+        agent.address,
+        [alice.address],
+        CONTRIB,
+        CYCLE,
+        OPEN_TIMEOUT,
+        1,
+      ),
     ).to.be.revertedWithCustomError(Chama, "InvalidConfig");
     await expect(
       Chama.deploy(
@@ -184,7 +214,21 @@ describe("Chama", () => {
         CONTRIB,
         CYCLE,
         OPEN_TIMEOUT,
+        1,
       ),
     ).to.be.revertedWithCustomError(Chama, "DuplicateMember");
+    // rounds = 0 is invalid
+    const [, , bob] = await ethers.getSigners();
+    await expect(
+      Chama.deploy(
+        await cUSD.getAddress(),
+        agent.address,
+        [alice.address, bob.address],
+        CONTRIB,
+        CYCLE,
+        OPEN_TIMEOUT,
+        0,
+      ),
+    ).to.be.revertedWithCustomError(Chama, "InvalidConfig");
   });
 });

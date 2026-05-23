@@ -22,6 +22,7 @@ contract ChamaFactory {
         uint256 contribution,
         uint256 cycleLength,
         uint256 openTimeout,
+        uint256 rounds,
         uint256 index
     );
 
@@ -37,15 +38,16 @@ contract ChamaFactory {
         address[] memory members,
         uint256 contribution,
         uint256 cycleLength,
-        uint256 openTimeout
+        uint256 openTimeout,
+        uint256 rounds
     ) external returns (address) {
-        Chama chama = new Chama(token, agent, members, contribution, cycleLength, openTimeout);
+        Chama chama = new Chama(token, agent, members, contribution, cycleLength, openTimeout, rounds);
         address addr = address(chama);
         uint256 idx = _chamas.length;
         _chamas.push(addr);
         _createdBy[msg.sender].push(addr);
         createdAt[addr] = block.timestamp;
-        emit ChamaCreated(msg.sender, addr, members, contribution, cycleLength, openTimeout, idx);
+        emit ChamaCreated(msg.sender, addr, members, contribution, cycleLength, openTimeout, rounds, idx);
         return addr;
     }
 

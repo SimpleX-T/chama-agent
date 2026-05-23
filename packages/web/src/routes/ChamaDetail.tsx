@@ -96,6 +96,8 @@ export function ChamaDetail() {
               contribution={data.contribution}
               isActive={data.isActive}
               completed={data.completed}
+              rounds={data.rounds}
+              totalCycles={data.totalCycles}
               size={520}
             />
           ) : (
@@ -111,7 +113,12 @@ export function ChamaDetail() {
                 ? "—"
                 : data.completed
                   ? "Completed"
-                  : `Cycle ${data.currentCycle.toString()} / ${data.memberCount.toString()}`
+                  : `Cycle ${data.currentCycle.toString()} / ${data.totalCycles.toString()}`
+            }
+            hint={
+              data && data.rounds > 1n
+                ? `Round ${(data.currentRound + 1n).toString()} of ${data.rounds.toString()}`
+                : undefined
             }
             accent={data?.completed ? "green" : "gold"}
           />
@@ -137,7 +144,11 @@ export function ChamaDetail() {
           <Stat
             label="Members"
             value={data ? data.memberCount.toString() : "—"}
-            hint="fixed-order rotation"
+            hint={
+              data && data.rounds > 1n
+                ? `${data.rounds.toString()}-round rotation`
+                : "fixed-order rotation"
+            }
           />
         </div>
       </section>
@@ -179,18 +190,33 @@ export function ChamaDetail() {
         <SectionHead title="Members" hint="Tap to view on Blockscout" />
         {data ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {data.members.map((m, i) => (
-              <MemberCard
-                key={m}
-                index={i}
-                address={m}
-                balance={data.balances[i]}
-                contribution={data.contribution}
-                hasContributed={data.contributedFlags[i]}
-                isCurrentPayee={!data.completed && Number(data.currentCycle) === i}
-                hasBeenPaid={data.completed || Number(data.currentCycle) > i}
-              />
-            ))}
+            {data.members.map((m, i) => {
+              const N = Number(data.memberCount);
+              const curr = Number(data.currentCycle);
+              const total = Number(data.totalCycles);
+              const isPayee = !data.completed && curr % N === i && curr < total;
+              // The next cycle index >= curr where this member is the payee
+              let nextCycle: number | null = null;
+              for (let c = i; c < total; c += N) {
+                if (c >= curr) {
+                  nextCycle = c;
+                  break;
+                }
+              }
+              return (
+                <MemberCard
+                  key={m}
+                  index={i}
+                  address={m}
+                  balance={data.balances[i]}
+                  contribution={data.contribution}
+                  hasContributed={data.contributedFlags[i]}
+                  isCurrentPayee={isPayee}
+                  hasBeenPaid={nextCycle === null}
+                  nextPayoutCycle={nextCycle}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

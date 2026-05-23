@@ -25,6 +25,11 @@ contract Chama {
     ///         force-advance with whatever was collected. 0 = no force
     ///         advance (chama waits indefinitely for all contributions).
     uint256 public immutable openTimeout;
+    /// @notice How many times the pot rotates through every member. The
+    ///         chama's total number of cycles is `members.length * rounds`.
+    ///         At round boundaries, the payee rotation loops back to
+    ///         member[0] — members who want to leave just stop contributing.
+    uint256 public immutable rounds;
     /// @notice Block timestamp at construction. Informational only.
     uint256 public immutable startTime;
 
@@ -65,14 +70,21 @@ contract Chama {
         address[] memory members_,
         uint256 contribution_,
         uint256 cycleLength_,
-        uint256 openTimeout_
+        uint256 openTimeout_,
+        uint256 rounds_
     ) {
-        if (members_.length < 2 || contribution_ == 0 || cycleLength_ == 0) revert InvalidConfig();
+        if (
+            members_.length < 2 ||
+            contribution_ == 0 ||
+            cycleLength_ == 0 ||
+            rounds_ == 0
+        ) revert InvalidConfig();
         token = IERC20(token_);
         agent = agent_;
         contribution = contribution_;
         cycleLength = cycleLength_;
-        openTimeout = openTimeout_; // 0 allowed = no force-advance possible
+        openTimeout = openTimeout_; // 0 = no force-advance possible
+        rounds = rounds_;
         startTime = block.timestamp;
         currentCycleOpenAt = block.timestamp;
         for (uint256 i = 0; i < members_.length; i++) {
@@ -91,7 +103,7 @@ contract Chama {
     ///         `cycleLength` timer.
     function contributeFor(address member) external {
         if (!isMember[member]) revert NotMember(member);
-        if (currentCycle >= _members.length) revert ChamaAlreadyCompleted();
+        if (currentCycle >= _members.length * rounds) revert ChamaAlreadyCompleted();
         if (contributed[currentCycle][member]) revert AlreadyContributed();
 
         contributed[currentCycle][member] = true;
@@ -122,7 +134,8 @@ contract Chama {
     ///         layer handles fairness beyond that.
     function executePayout() external {
         uint256 cycle = currentCycle;
-        if (cycle >= _members.length) revert ChamaAlreadyCompleted();
+        uint256 total = _members.length * rounds;
+        if (cycle >= total) revert ChamaAlreadyCompleted();
         uint256 activeAt = currentCycleActiveAt;
 
         if (activeAt > 0) {
@@ -132,13 +145,13 @@ contract Chama {
             // FORCE-ADVANCE path
             if (openTimeout == 0) revert OpenTimeoutDisabled();
             if (block.timestamp < currentCycleOpenAt + openTimeout) revert OpenTimeoutNotElapsed();
-            // Emit Defaulted for every member who didn't pay in
             for (uint256 i = 0; i < _members.length; i++) {
                 if (!contributed[cycle][_members[i]]) emit Defaulted(_members[i], cycle);
             }
         }
 
-        address payee = _members[cycle];
+        // Payee rotates through every member, wrapping around on each new round.
+        address payee = _members[cycle % _members.length];
         uint256 pot = cycleContributions[cycle];
 
         currentCycle = cycle + 1;
@@ -146,7 +159,7 @@ contract Chama {
         currentCycleOpenAt = block.timestamp;
         emit PayoutExecuted(payee, cycle, pot);
         emit CycleAdvanced(currentCycle);
-        if (currentCycle == _members.length) emit ChamaCompleted();
+        if (currentCycle == total) emit ChamaCompleted();
 
         if (pot > 0) require(token.transfer(payee, pot), "transfer failed");
     }
@@ -160,8 +173,19 @@ contract Chama {
     }
 
     function currentPayee() external view returns (address) {
-        if (currentCycle >= _members.length) return address(0);
-        return _members[currentCycle];
+        if (currentCycle >= _members.length * rounds) return address(0);
+        return _members[currentCycle % _members.length];
+    }
+
+    /// @notice Total cycles this chama will run before completion.
+    function totalCycles() external view returns (uint256) {
+        return _members.length * rounds;
+    }
+
+    /// @notice The current round index (0-based). Round 0 is the first
+    ///         rotation through all members; round `rounds-1` is the last.
+    function currentRound() external view returns (uint256) {
+        return currentCycle / _members.length;
     }
 
     /// @notice Returns the next timestamp at which `executePayout()` will
@@ -173,7 +197,7 @@ contract Chama {
     ///           (chama waits indefinitely for all contributions)
     ///         - When completed: returns 0
     function cycleDeadline() external view returns (uint256) {
-        if (currentCycle >= _members.length) return 0;
+        if (currentCycle >= _members.length * rounds) return 0;
         if (currentCycleActiveAt > 0) return currentCycleActiveAt + cycleLength;
         if (openTimeout == 0) return 0;
         return currentCycleOpenAt + openTimeout;
@@ -182,6 +206,6 @@ contract Chama {
     /// @notice True when the current cycle's collection is complete and the
     ///         countdown is ticking toward payout.
     function isCycleActive() external view returns (bool) {
-        return currentCycle < _members.length && currentCycleActiveAt > 0;
+        return currentCycle < _members.length * rounds && currentCycleActiveAt > 0;
     }
 }

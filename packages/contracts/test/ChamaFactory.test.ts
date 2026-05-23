@@ -17,7 +17,7 @@ describe("ChamaFactory", () => {
     const { factory, creator, alice, bob, carol } = await deploy();
     const members = [alice.address, bob.address, carol.address];
 
-    const tx = await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT);
+    const tx = await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT, 1);
     const receipt = await tx.wait();
 
     const ev = receipt!.logs
@@ -50,7 +50,7 @@ describe("ChamaFactory", () => {
 
     const txs = [];
     for (let i = 0; i < 4; i++) {
-      const t = await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT);
+      const t = await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT, 1);
       txs.push(await t.wait());
     }
     expect(await factory.chamasCount()).to.equal(4);
@@ -80,9 +80,9 @@ describe("ChamaFactory", () => {
     const { factory, creator, alice, bob, carol } = await deploy();
     const members = [alice.address, bob.address, carol.address];
 
-    await factory.connect(alice).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT);
-    await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT);
-    await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT);
+    await factory.connect(alice).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT, 1);
+    await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT, 1);
+    await factory.connect(creator).createChama(members, CONTRIB, ONE_WEEK, OPEN_TIMEOUT, 1);
 
     expect((await factory.chamasOf(alice.address)).length).to.equal(1);
     expect((await factory.chamasOf(creator.address)).length).to.equal(2);

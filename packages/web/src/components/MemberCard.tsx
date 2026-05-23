@@ -11,6 +11,8 @@ type Props = {
   hasContributed: boolean;
   isCurrentPayee: boolean;
   hasBeenPaid: boolean;
+  /** Index of the *next* cycle in which this member will receive the pot, or null if done. */
+  nextPayoutCycle: number | null;
 };
 
 export function MemberCard({
@@ -21,14 +23,17 @@ export function MemberCard({
   hasContributed,
   isCurrentPayee,
   hasBeenPaid,
+  nextPayoutCycle,
 }: Props) {
   const insufficientBalance = !hasContributed && balance < contribution;
   const shortfall = contribution - balance;
 
   let cycleHint: { label: string; tone: "gold" | "green" | "muted" };
-  if (hasBeenPaid) cycleHint = { label: `Was paid in cycle ${index}`, tone: "green" };
-  else if (isCurrentPayee) cycleHint = { label: "Receives this cycle's pot", tone: "gold" };
-  else cycleHint = { label: `Receives in cycle ${index}`, tone: "muted" };
+  if (isCurrentPayee) cycleHint = { label: "Receives this cycle's pot", tone: "gold" };
+  else if (nextPayoutCycle !== null)
+    cycleHint = { label: `Next payout in cycle ${nextPayoutCycle}`, tone: "muted" };
+  else if (hasBeenPaid) cycleHint = { label: "All payouts received", tone: "green" };
+  else cycleHint = { label: "—", tone: "muted" };
 
   return (
     <motion.a

@@ -7,11 +7,14 @@ export type StaticConfig = {
   cycleLength: bigint;
   startTime: bigint;
   memberCount: bigint;
+  rounds: bigint;
+  totalCycles: bigint;
   members: readonly `0x${string}`[];
 };
 
 export type ChamaState = StaticConfig & {
   currentCycle: bigint;
+  currentRound: bigint;
   currentPayee: `0x${string}`;
   cycleDeadline: bigint; // 0 if cycle is in OPEN phase (no countdown yet)
   isActive: boolean; // true once last contribution flips the cycle to ACTIVE
@@ -40,7 +43,22 @@ async function readStaticOnce(addr: `0x${string}`): Promise<StaticConfig> {
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "memberCount" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "members" }),
   ])) as [bigint, bigint, bigint, bigint, readonly `0x${string}`[]];
-  return { contribution, cycleLength, startTime, memberCount, members };
+
+  // rounds/totalCycles were added in v7. Older chamas (single-rotation) lack
+  // these; default to rounds=1 / totalCycles=memberCount.
+  let rounds = 1n;
+  let totalCycles = memberCount;
+  try {
+    rounds = (await publicClient.readContract({
+      address: addr,
+      abi: chamaAbi,
+      functionName: "rounds",
+    })) as bigint;
+    totalCycles = memberCount * rounds;
+  } catch {
+    /* legacy chama — rounds defaults to 1 */
+  }
+  return { contribution, cycleLength, startTime, memberCount, rounds, totalCycles, members };
 }
 
 /**
@@ -84,8 +102,9 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
     isActive = cycleDeadline > 0n;
   }
 
-  const completed = currentCycle >= cfg.memberCount;
-  const cycle = completed ? cfg.memberCount - 1n : currentCycle;
+  const completed = currentCycle >= cfg.totalCycles;
+  const cycle = completed ? cfg.totalCycles - 1n : currentCycle;
+  const currentRound = cfg.memberCount > 0n ? currentCycle / cfg.memberCount : 0n;
 
   const [contributedFlags, balances] = await Promise.all([
     Promise.all(
@@ -116,6 +135,7 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
   return {
     ...cfg,
     currentCycle,
+    currentRound,
     currentPayee,
     cycleDeadline,
     isActive,

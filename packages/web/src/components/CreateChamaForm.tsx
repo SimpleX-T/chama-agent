@@ -25,6 +25,8 @@ const openTimeoutPresets: Preset[] = [
   { label: "Never", seconds: 0 },
 ];
 
+const roundPresets = [1, 2, 3, 5, 10];
+
 export function CreateChamaForm() {
   const navigate = useNavigate();
   const { address: connected } = useAccount();
@@ -32,6 +34,7 @@ export function CreateChamaForm() {
   const [contribution, setContribution] = useState("1");
   const [cycleSeconds, setCycleSeconds] = useState(cycleLengthPresets[0].seconds);
   const [openTimeoutSeconds, setOpenTimeoutSeconds] = useState(openTimeoutPresets[0].seconds);
+  const [rounds, setRounds] = useState(1);
 
   const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
   const { isLoading: isMining, isSuccess, data: receipt, error: waitError } = useWaitForTransactionReceipt({ hash: txHash });
@@ -88,6 +91,7 @@ export function CreateChamaForm() {
         valueWei,
         BigInt(cycleSeconds),
         BigInt(openTimeoutSeconds),
+        BigInt(rounds),
       ],
     });
   }
@@ -257,6 +261,53 @@ export function CreateChamaForm() {
             member has paid in. The pot lands in the next payee at the end of this window.
           </p>
         </div>
+      </section>
+
+      <section className="surface p-6 space-y-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <label className="text-xs uppercase tracking-[0.14em] text-[var(--color-fg-subtle)] font-medium">
+            Rounds (how many times the pot rotates through everyone)
+          </label>
+          <span className="text-[10px] uppercase tracking-wider text-[var(--color-fg-subtle)] nums">
+            {rounds * validation.nonEmpty.length || rounds * 3} total cycles
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {roundPresets.map((r) => {
+            const active = rounds === r;
+            return (
+              <button
+                type="button"
+                key={r}
+                onClick={() => setRounds(r)}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-xs transition nums",
+                  active
+                    ? "border-[var(--color-accent)]/60 bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                    : "border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-white/[0.03]",
+                )}
+              >
+                {r} {r === 1 ? "round" : "rounds"}
+              </button>
+            );
+          })}
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-[10px] uppercase tracking-wider text-[var(--color-fg-subtle)]">custom</span>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={rounds}
+              onChange={(e) => setRounds(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+              className="w-16 rounded-md border border-[var(--color-border)] bg-black/40 px-2 py-1 text-xs nums focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-[var(--color-fg-subtle)] leading-snug">
+          One round = one full pass through every member. After each round, anyone who's losing
+          interest can simply stop contributing — defaulters surrender their share of that cycle's
+          pot but the rotation continues for those who stay in.
+        </p>
       </section>
 
       <section className="surface p-6 space-y-3">

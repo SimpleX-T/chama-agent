@@ -65,6 +65,8 @@ export function Landing() {
               contribution={data?.contribution ?? 0n}
               isActive={data?.isActive}
               completed={data?.completed}
+              rounds={data?.rounds}
+              totalCycles={data?.totalCycles}
             />
           </motion.div>
         </div>
@@ -135,6 +137,8 @@ export function Landing() {
                   contribution={data?.contribution ?? 0n}
                   isActive={data?.isActive}
                   completed={data?.completed}
+                  rounds={data?.rounds}
+                  totalCycles={data?.totalCycles}
                   size={400}
                 />
               </div>
