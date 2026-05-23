@@ -60,7 +60,7 @@ export function ChamaDetail() {
             <ExternalLink className="size-3.5" />
           </a>
         </div>
-        {data && !data.completed && (
+        {data && !data.completed && data.isActive && (
           <CountdownRing deadline={data.cycleDeadline} total={data.cycleLength} size={76} />
         )}
       </motion.header>
@@ -151,6 +151,7 @@ export function ChamaDetail() {
             memberCount={data.memberCount}
             contributedFlags={data.contributedFlags}
             cycleDeadline={data.cycleDeadline}
+            isActive={data.isActive}
             potThisCycle={data.potThisCycle}
             payee={data.currentPayee}
             payeeIndex={Number(data.currentCycle)}

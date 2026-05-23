@@ -7,19 +7,21 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice One contract instance = one chama. N members each contribute a fixed
 ///         amount of `token` per cycle; the cycle's full pot is paid out to one
 ///         member in a fixed rotation, one member per cycle, until all have been paid.
-/// @dev Both contributeFor() and executePayout() are permissionless — the contract
-///      itself enforces every invariant (one contribution per member per cycle,
-///      fixed payout order, no payout before the cycle is ready). The `agent`
-///      address is stored as metadata (handy for ERC-8004 attestations and event
-///      indexing) but has no special on-chain privilege. If the courtesy agent
-///      service is offline, any member — or anyone at all — can call these
-///      functions to keep the chama moving.
+/// @dev Every cycle has two phases:
+///        1. OPEN — the contract is collecting contributions; no countdown is
+///           ticking. The cycle waits indefinitely for all members to pay in.
+///        2. ACTIVE — triggered automatically when the last member contributes.
+///           A `cycleLength`-long timer starts. Once it elapses, `executePayout`
+///           can be called by anyone to push the pot to that cycle's payee and
+///           advance.
+///      Both `contributeFor` and `executePayout` are permissionless. The agent
+///      address is stored as event metadata only.
 contract Chama {
     IERC20 public immutable token;
     address public immutable agent;
     uint256 public immutable contribution;
     uint256 public immutable cycleLength;
-    /// @notice Block timestamp at which the chama was constructed. Informational only.
+    /// @notice Block timestamp at construction. Informational only.
     uint256 public immutable startTime;
 
     address[] private _members;
@@ -27,22 +29,22 @@ contract Chama {
     mapping(uint256 => mapping(address => bool)) public contributed;
     mapping(uint256 => uint256) public cycleContributions;
     uint256 public currentCycle;
-    /// @notice The current cycle's own clock — set on chama creation and reset
-    ///         every time _executePayout advances. The cycle deadline is
-    ///         `currentCycleStartTime + cycleLength`, so every cycle gets the
-    ///         full configured window regardless of how fast earlier cycles
-    ///         finished.
-    uint256 public currentCycleStartTime;
+
+    /// @notice 0 = current cycle is in OPEN phase (collecting contributions).
+    ///         >0 = ACTIVE phase began at this timestamp; payout unlocks at
+    ///         `currentCycleActiveAt + cycleLength`.
+    uint256 public currentCycleActiveAt;
 
     event Contributed(address indexed member, uint256 indexed cycle, uint256 amount);
+    event CycleActivated(uint256 indexed cycle, uint256 timestamp);
     event PayoutExecuted(address indexed payee, uint256 indexed cycle, uint256 amount);
     event CycleAdvanced(uint256 indexed newCycle);
-    event Defaulted(address indexed member, uint256 indexed cycle);
     event ChamaCompleted();
 
     error NotMember(address who);
     error AlreadyContributed();
-    error CycleNotReady();
+    error CycleNotActive();
+    error ActivePhaseNotElapsed();
     error ChamaAlreadyCompleted();
     error InvalidConfig();
     error DuplicateMember(address who);
@@ -60,7 +62,6 @@ contract Chama {
         contribution = contribution_;
         cycleLength = cycleLength_;
         startTime = block.timestamp;
-        currentCycleStartTime = block.timestamp;
         for (uint256 i = 0; i < members_.length; i++) {
             address m = members_[i];
             if (isMember[m]) revert DuplicateMember(m);
@@ -69,12 +70,12 @@ contract Chama {
         }
     }
 
-    /// @notice Permissionless trigger: pulls one cycle's contribution from `member`.
-    /// @dev Anyone can call this; the contract only debits if `member` has
-    ///      pre-approved this contract for at least `contribution` cUSD.
-    ///      If this contribution completes the cycle (every member has now
-    ///      paid in), the payout fires in the same transaction — no separate
-    ///      "executePayout" needed for the happy path.
+    /// @notice Permissionless: pull one cycle's contribution from `member`.
+    ///         Anyone can call; the contract only debits if `member` has
+    ///         pre-approved this contract for at least `contribution` cUSD.
+    ///         The contribution that completes the cycle's member set
+    ///         transitions the cycle from OPEN to ACTIVE and starts the
+    ///         `cycleLength` timer.
     function contributeFor(address member) external {
         if (!isMember[member]) revert NotMember(member);
         if (currentCycle >= _members.length) revert ChamaAlreadyCompleted();
@@ -86,50 +87,36 @@ contract Chama {
 
         require(token.transferFrom(member, address(this), contribution), "transferFrom failed");
 
-        // Auto-advance: the contribution that completes the cycle also pushes
-        // the payout. The contributing member pays the (small) extra gas, which
-        // is fair — their action is what enabled the rotation to proceed.
+        // Last contribution flips the cycle to ACTIVE — but the payout doesn't
+        // fire until the `cycleLength` timer elapses.
         if (cycleContributions[currentCycle] == contribution * _members.length) {
-            _executePayout();
+            currentCycleActiveAt = block.timestamp;
+            emit CycleActivated(currentCycle, block.timestamp);
         }
     }
 
-    /// @notice Permissionless: push the cycle's pot to the next-in-line member and advance.
-    /// @dev Same as the auto-fire path above, exposed for the deadline-elapsed
-    ///      case (some member defaulted, anyone wants to advance the cycle with
-    ///      a partial pot). Removing access control is safe — the contract
-    ///      enforces *who* gets paid (fixed rotation order), *how much* (only
-    ///      what's been contributed this cycle), and *when* (only after the
-    ///      cycle is ready). The agent address is preserved as event metadata.
+    /// @notice Permissionless: deliver the active cycle's pot to its payee.
+    ///         Reverts unless the cycle has entered the ACTIVE phase AND the
+    ///         `cycleLength` timer has elapsed. The contract enforces the
+    ///         payout order, amount, and timing — gating the caller adds
+    ///         nothing.
     function executePayout() external {
-        _executePayout();
-    }
-
-    function _executePayout() internal {
         uint256 cycle = currentCycle;
         if (cycle >= _members.length) revert ChamaAlreadyCompleted();
-
-        bool allContributed = cycleContributions[cycle] == contribution * _members.length;
-        bool deadlinePassed = block.timestamp >= currentCycleStartTime + cycleLength;
-        if (!allContributed && !deadlinePassed) revert CycleNotReady();
-
-        if (!allContributed) {
-            for (uint256 i = 0; i < _members.length; i++) {
-                if (!contributed[cycle][_members[i]]) emit Defaulted(_members[i], cycle);
-            }
-        }
+        uint256 activeAt = currentCycleActiveAt;
+        if (activeAt == 0) revert CycleNotActive();
+        if (block.timestamp < activeAt + cycleLength) revert ActivePhaseNotElapsed();
 
         address payee = _members[cycle];
         uint256 pot = cycleContributions[cycle];
 
         currentCycle = cycle + 1;
-        // Reset the cycle clock — the next cycle gets its own full window.
-        currentCycleStartTime = block.timestamp;
+        currentCycleActiveAt = 0; // next cycle re-enters OPEN
         emit PayoutExecuted(payee, cycle, pot);
         emit CycleAdvanced(currentCycle);
         if (currentCycle == _members.length) emit ChamaCompleted();
 
-        if (pot > 0) require(token.transfer(payee, pot), "transfer failed");
+        require(token.transfer(payee, pot), "transfer failed");
     }
 
     function members() external view returns (address[] memory) {
@@ -145,7 +132,17 @@ contract Chama {
         return _members[currentCycle];
     }
 
+    /// @notice Returns 0 if the current cycle is in OPEN phase (no countdown
+    ///         yet). Otherwise returns the absolute timestamp at which the
+    ///         active phase elapses and payout becomes callable.
     function cycleDeadline() external view returns (uint256) {
-        return currentCycleStartTime + cycleLength;
+        if (currentCycleActiveAt == 0) return 0;
+        return currentCycleActiveAt + cycleLength;
+    }
+
+    /// @notice True when the current cycle's collection is complete and the
+    ///         countdown is ticking toward payout.
+    function isCycleActive() external view returns (bool) {
+        return currentCycle < _members.length && currentCycleActiveAt > 0;
     }
 }

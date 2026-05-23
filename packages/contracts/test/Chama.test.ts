@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("Chama", () => {
-  const ONE_WEEK = 7 * 24 * 60 * 60;
+  const CYCLE = 5 * 60; // 5 minutes
   const CONTRIB = ethers.parseUnits("20", 18); // 20 cUSD
 
   async function deploy() {
@@ -14,7 +14,7 @@ describe("Chama", () => {
       agent.address,
       [alice.address, bob.address, carol.address],
       CONTRIB,
-      ONE_WEEK,
+      CYCLE,
     ]);
     const chamaAddr = await chama.getAddress();
     for (const u of [alice, bob, carol]) {
@@ -24,54 +24,73 @@ describe("Chama", () => {
     return { chama, cUSD, agent, alice, bob, carol, stranger };
   }
 
-  it("runs a full 3-cycle rotation with auto-payout firing on the last contribution", async () => {
+  it("runs a full 3-cycle rotation: contribute, wait, payout for each cycle in order", async () => {
     const { chama, cUSD, alice, bob, carol } = await deploy();
-
-    const payouts: Array<[any, any]> = [
+    const payouts: Array<[any, number]> = [
       [alice, 0],
       [bob, 1],
       [carol, 2],
     ];
 
     for (const [payee, cycle] of payouts) {
-      const before = await cUSD.balanceOf(payee.address);
-      // The LAST contributeFor of the cycle auto-advances — no separate executePayout needed
+      // OPEN phase — contributions land but no clock starts
+      expect(await chama.isCycleActive()).to.equal(false);
       await chama.contributeFor(alice.address);
       await chama.contributeFor(bob.address);
-      const tx = await chama.contributeFor(carol.address);
-      await expect(tx).to.emit(chama, "PayoutExecuted").withArgs(payee.address, cycle, CONTRIB * 3n);
-      // Payee contributed once (-CONTRIB) and received the full pot (+3*CONTRIB),
-      // so the net change against the pre-cycle balance is +2 * CONTRIB.
-      expect((await cUSD.balanceOf(payee.address)) - before).to.equal(CONTRIB * 2n);
+      expect(await chama.isCycleActive()).to.equal(false);
+
+      // Last contribution flips cycle to ACTIVE
+      await expect(chama.contributeFor(carol.address))
+        .to.emit(chama, "CycleActivated")
+        .withArgs(cycle, (t: bigint) => t > 0n);
+      expect(await chama.isCycleActive()).to.equal(true);
+
+      // Payout blocked until cycleLength elapses
+      await expect(chama.executePayout()).to.be.revertedWithCustomError(chama, "ActivePhaseNotElapsed");
+
+      // `before` measured AFTER contributions but BEFORE payout — so the only
+      // movement we should see is the +pot the payee receives.
+      const before = await cUSD.balanceOf(payee.address);
+      await time.increase(CYCLE);
+
+      await expect(chama.executePayout())
+        .to.emit(chama, "PayoutExecuted")
+        .withArgs(payee.address, cycle, CONTRIB * 3n);
+
+      expect((await cUSD.balanceOf(payee.address)) - before).to.equal(CONTRIB * 3n);
+      // After payout, new cycle is back in OPEN phase
+      expect(await chama.currentCycleActiveAt()).to.equal(0);
     }
 
     expect(await chama.currentCycle()).to.equal(3);
     await expect(chama.executePayout()).to.be.revertedWithCustomError(chama, "ChamaAlreadyCompleted");
   });
 
-  it("advances on deadline with a partial pot and emits Defaulted for missing members", async () => {
-    const { chama, cUSD, agent, alice, bob, carol } = await deploy();
-
-    await chama.contributeFor(alice.address); // bob and carol skip
-
-    await expect(chama.connect(agent).executePayout()).to.be.revertedWithCustomError(
+  it("executePayout reverts during OPEN phase (no contributions yet)", async () => {
+    const { chama, stranger } = await deploy();
+    await expect(chama.connect(stranger).executePayout()).to.be.revertedWithCustomError(
       chama,
-      "CycleNotReady",
+      "CycleNotActive",
     );
+  });
 
-    await time.increase(ONE_WEEK + 1);
-
-    const before = await cUSD.balanceOf(alice.address);
-    const tx = await chama.connect(agent).executePayout();
-    await expect(tx).to.emit(chama, "Defaulted").withArgs(bob.address, 0);
-    await expect(tx).to.emit(chama, "Defaulted").withArgs(carol.address, 0);
-    expect(await cUSD.balanceOf(alice.address)).to.equal(before + CONTRIB);
+  it("executePayout reverts before the active phase elapses", async () => {
+    const { chama, alice, bob, carol, stranger } = await deploy();
+    await chama.contributeFor(alice.address);
+    await chama.contributeFor(bob.address);
+    await chama.contributeFor(carol.address); // flips to ACTIVE
+    expect(await chama.isCycleActive()).to.equal(true);
+    // No time advance — still mid-active
+    await expect(chama.connect(stranger).executePayout()).to.be.revertedWithCustomError(
+      chama,
+      "ActivePhaseNotElapsed",
+    );
   });
 
   it("contributeFor is permissionless but rejects non-members and duplicates", async () => {
     const { chama, alice, stranger } = await deploy();
 
-    await chama.connect(stranger).contributeFor(alice.address); // anyone can trigger
+    await chama.connect(stranger).contributeFor(alice.address); // any wallet can trigger
     await expect(chama.contributeFor(stranger.address)).to.be.revertedWithCustomError(
       chama,
       "NotMember",
@@ -82,41 +101,38 @@ describe("Chama", () => {
     );
   });
 
-  it("executePayout is permissionless on the deadline-elapsed path (partial pot)", async () => {
+  it("executePayout is permissionless once active phase has elapsed", async () => {
     const { chama, alice, bob, carol, stranger } = await deploy();
-    await chama.contributeFor(alice.address); // only alice paid in
-    await time.increase(ONE_WEEK + 1);
-    // a wallet that's neither the agent nor a member can advance the cycle
-    await expect(chama.connect(stranger).executePayout())
-      .to.emit(chama, "PayoutExecuted")
-      .withArgs(alice.address, 0, CONTRIB)
-      .and.to.emit(chama, "Defaulted").withArgs(bob.address, 0)
-      .and.to.emit(chama, "Defaulted").withArgs(carol.address, 0);
-  });
-
-  it("executePayout still reverts before the cycle is ready, regardless of caller", async () => {
-    const { chama, alice, stranger } = await deploy();
-    await chama.contributeFor(alice.address); // only one member paid in
-    // not all contributed AND deadline not elapsed → CycleNotReady
-    await expect(chama.connect(stranger).executePayout()).to.be.revertedWithCustomError(
-      chama,
-      "CycleNotReady",
-    );
-  });
-
-  it("each cycle gets its own full clock — fast cycles don't shrink later ones", async () => {
-    const { chama, alice, bob, carol } = await deploy();
-    // complete cycle 0 immediately (auto-payout fires on the third contribution)
     await chama.contributeFor(alice.address);
     await chama.contributeFor(bob.address);
     await chama.contributeFor(carol.address);
-    expect(await chama.currentCycle()).to.equal(1);
+    await time.increase(CYCLE);
+    await expect(chama.connect(stranger).executePayout())
+      .to.emit(chama, "PayoutExecuted")
+      .withArgs(alice.address, 0, CONTRIB * 3n);
+  });
 
+  it("each cycle's clock only starts on its own last contribution", async () => {
+    const { chama, alice, bob, carol } = await deploy();
+    // Race through cycle 0
+    await chama.contributeFor(alice.address);
+    await chama.contributeFor(bob.address);
+    await chama.contributeFor(carol.address);
+    await time.increase(CYCLE);
+    await chama.executePayout();
+    expect(await chama.currentCycle()).to.equal(1);
+    expect(await chama.currentCycleActiveAt()).to.equal(0);
+    // Cycle 1 should be OPEN again, deadline should be 0
+    expect(await chama.cycleDeadline()).to.equal(0);
+
+    await chama.contributeFor(alice.address);
+    await chama.contributeFor(bob.address);
+    expect(await chama.cycleDeadline()).to.equal(0); // still OPEN
+
+    await chama.contributeFor(carol.address); // flips ACTIVE
     const tip = (await ethers.provider.getBlock("latest"))!.timestamp;
     const deadline = Number(await chama.cycleDeadline());
-    // Cycle 1's deadline should sit ~ONE_WEEK in the future from *now*, not
-    // 2 * ONE_WEEK from the original chama-creation time.
-    expect(deadline - tip).to.be.closeTo(ONE_WEEK, 5);
+    expect(deadline - tip).to.be.closeTo(CYCLE, 5);
   });
 
   it("rejects invalid construction", async () => {
@@ -124,10 +140,10 @@ describe("Chama", () => {
     const cUSD = await ethers.deployContract("MockCUSD");
     const Chama = await ethers.getContractFactory("Chama");
     await expect(
-      Chama.deploy(await cUSD.getAddress(), agent.address, [alice.address], CONTRIB, ONE_WEEK),
+      Chama.deploy(await cUSD.getAddress(), agent.address, [alice.address], CONTRIB, CYCLE),
     ).to.be.revertedWithCustomError(Chama, "InvalidConfig");
     await expect(
-      Chama.deploy(await cUSD.getAddress(), agent.address, [alice.address, alice.address], CONTRIB, ONE_WEEK),
+      Chama.deploy(await cUSD.getAddress(), agent.address, [alice.address, alice.address], CONTRIB, CYCLE),
     ).to.be.revertedWithCustomError(Chama, "DuplicateMember");
   });
 });

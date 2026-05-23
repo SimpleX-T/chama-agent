@@ -157,18 +157,13 @@ async function main() {
       const r = await tx.wait();
       console.log(`  MEMBER ${i + 1}: contributeFor — ${r!.hash}`);
 
-      // Did the payout auto-fire in the same tx?
+      // Did the contribution flip the cycle to ACTIVE?
       for (const log of r!.logs) {
         try {
           const parsed = chama.interface.parseLog(log);
-          if (parsed?.name === "PayoutExecuted") {
-            const payeeIdx = members.findIndex(
-              (m) => m.toLowerCase() === (parsed.args.payee as string).toLowerCase(),
-            );
+          if (parsed?.name === "CycleActivated") {
             console.log(
-              `  → AUTO-PAYOUT: ${ethers.formatUnits(parsed.args.amount as bigint)} mcUSD landed in MEMBER ${
-                payeeIdx + 1
-              } (${shortAddr(parsed.args.payee as string)})`,
+              `  → CYCLE ${parsed.args.cycle.toString()} now ACTIVE — payout unlocks in ${(await chama.cycleLength()).toString()}s`,
             );
           }
         } catch {
@@ -177,6 +172,43 @@ async function main() {
       }
     } catch (e: any) {
       console.log(`  MEMBER ${i + 1}: contributeFor failed — ${e?.shortMessage ?? e?.message?.split("\n")[0]}`);
+    }
+  }
+
+  // Phase 3: if cycle is ACTIVE and timer has elapsed, fire the payout
+  const isActive = (await chama.isCycleActive()) as boolean;
+  if (isActive) {
+    const deadline = Number((await chama.cycleDeadline()) as bigint);
+    const now = Math.floor(Date.now() / 1000);
+    if (now >= deadline) {
+      console.log("\n--- Phase 3: executePayout (active phase elapsed) ---");
+      try {
+        const tx = await chama.connect(deployer).executePayout();
+        const r = await tx.wait();
+        for (const log of r!.logs) {
+          try {
+            const parsed = chama.interface.parseLog(log);
+            if (parsed?.name === "PayoutExecuted") {
+              const payeeIdx = members.findIndex(
+                (m) => m.toLowerCase() === (parsed.args.payee as string).toLowerCase(),
+              );
+              console.log(
+                `  PAYOUT: ${ethers.formatUnits(parsed.args.amount as bigint)} mcUSD → MEMBER ${
+                  payeeIdx + 1
+                } (${shortAddr(parsed.args.payee as string)}) — ${r!.hash}`,
+              );
+            }
+          } catch {}
+        }
+      } catch (e: any) {
+        console.log(`  executePayout failed — ${e?.shortMessage ?? e?.message?.split("\n")[0]}`);
+      }
+    } else {
+      const remain = deadline - now;
+      console.log(
+        `\nCycle is ACTIVE — payout unlocks in ${remain}s (${new Date(deadline * 1000).toISOString()}).`,
+      );
+      console.log("Re-run this script after the timer elapses, or let the agent service handle it.");
     }
   }
 

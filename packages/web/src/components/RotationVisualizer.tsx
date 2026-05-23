@@ -248,6 +248,21 @@ export function RotationVisualizer({
           {formatUnits(contribution)} mcUSD
         </div>
       )}
+
+      {!completed && (
+        <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 surface-tile px-3 py-1.5 text-[10px] uppercase tracking-[0.14em]">
+          {(() => {
+            const paid = contributedFlags.filter(Boolean).length;
+            if (paid < members.length)
+              return (
+                <span className="text-[var(--color-fg-muted)]">
+                  {paid}/{members.length} paid in
+                </span>
+              );
+            return <span className="text-[oklch(0.78_0.18_230)]">cycle active · waiting for timer</span>;
+          })()}
+        </div>
+      )}
     </div>
   );
 }

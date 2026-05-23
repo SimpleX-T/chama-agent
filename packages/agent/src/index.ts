@@ -72,9 +72,11 @@ const chamaAbi = parseAbi([
   "function cycleLength() view returns (uint256)",
   "function startTime() view returns (uint256)",
   "function currentCycle() view returns (uint256)",
+  "function currentCycleActiveAt() view returns (uint256)",
   "function memberCount() view returns (uint256)",
   "function members() view returns (address[])",
   "function cycleDeadline() view returns (uint256)",
+  "function isCycleActive() view returns (bool)",
   "function contributed(uint256 cycle, address member) view returns (bool)",
   "function contributeFor(address member) external",
   "function executePayout() external",
@@ -239,33 +241,21 @@ async function tickChama(
     log.info({ chama: cfg.address, member: m, tx: shortHash(hash) }, "✓ contributeFor mined");
   }
 
-  const updatedFlags = await Promise.all(
-    cfg.members.map((m) =>
-      publicClient.readContract({
-        address: cfg.address,
-        abi: chamaAbi,
-        functionName: "contributed",
-        args: [currentCycle, m],
-      }) as Promise<boolean>,
-    ),
-  );
+  // New semantics: executePayout is only ever callable once the cycle's
+  // ACTIVE phase has elapsed. cycleDeadline() returns 0 during OPEN phase
+  // (no clock yet) and a real timestamp once the last contribution flips
+  // the cycle to ACTIVE.
   const deadline = (await publicClient.readContract({
     address: cfg.address,
     abi: chamaAbi,
     functionName: "cycleDeadline",
   })) as bigint;
-  const allContributed = updatedFlags.every(Boolean);
   const now = BigInt(Math.floor(Date.now() / 1000));
 
-  if (allContributed || now >= deadline) {
+  if (deadline > 0n && now >= deadline) {
     log.info(
-      {
-        chama: cfg.address,
-        cycle: currentCycle.toString(),
-        allContributed,
-        deadlinePassed: now >= deadline,
-      },
-      "→ executePayout()",
+      { chama: cfg.address, cycle: currentCycle.toString() },
+      "→ executePayout() (active phase elapsed)",
     );
     const hash = await walletClient.writeContract({
       account: walletClient.account!,
@@ -276,6 +266,12 @@ async function tickChama(
     });
     await publicClient.waitForTransactionReceipt({ hash });
     log.info({ chama: cfg.address, tx: shortHash(hash) }, "✓ executePayout mined");
+  } else if (deadline > 0n) {
+    const remain = Number(deadline - now);
+    log.info(
+      { chama: cfg.address, cycle: currentCycle.toString(), remainingSec: remain },
+      "cycle active — waiting on timer",
+    );
   }
 }
 

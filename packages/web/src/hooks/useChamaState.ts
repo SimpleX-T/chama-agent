@@ -13,7 +13,8 @@ export type StaticConfig = {
 export type ChamaState = StaticConfig & {
   currentCycle: bigint;
   currentPayee: `0x${string}`;
-  cycleDeadline: bigint;
+  cycleDeadline: bigint; // 0 if cycle is in OPEN phase (no countdown yet)
+  isActive: boolean; // true once last contribution flips the cycle to ACTIVE
   contributedFlags: boolean[];
   balances: bigint[];
   potThisCycle: bigint;
@@ -64,11 +65,12 @@ async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
 }
 
 async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<ChamaState> {
-  const [currentCycle, currentPayee, cycleDeadline] = (await Promise.all([
+  const [currentCycle, currentPayee, cycleDeadline, isActive] = (await Promise.all([
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentCycle" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentPayee" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "cycleDeadline" }),
-  ])) as [bigint, `0x${string}`, bigint];
+    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "isCycleActive" }),
+  ])) as [bigint, `0x${string}`, bigint, boolean];
 
   const completed = currentCycle >= cfg.memberCount;
   const cycle = completed ? cfg.memberCount - 1n : currentCycle;
@@ -99,7 +101,17 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
   ]);
   const filled = contributedFlags.filter(Boolean).length;
   const potThisCycle = filled > 0 ? cfg.contribution * BigInt(filled) : 0n;
-  return { ...cfg, currentCycle, currentPayee, cycleDeadline, contributedFlags, balances, potThisCycle, completed };
+  return {
+    ...cfg,
+    currentCycle,
+    currentPayee,
+    cycleDeadline,
+    isActive,
+    contributedFlags,
+    balances,
+    potThisCycle,
+    completed,
+  };
 }
 
 export function useChamaState(address: `0x${string}` = CHAMA_ADDR) {
