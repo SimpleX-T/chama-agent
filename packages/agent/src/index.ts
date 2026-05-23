@@ -21,6 +21,7 @@ import {
   createPublicClient,
   createWalletClient,
   defineChain,
+  fallback,
   getAddress,
   http,
   parseAbi,
@@ -40,17 +41,28 @@ const log = pino({
 const TICK_MS = Number(process.env.AGENT_TICK_MS ?? 15_000);
 let tickInFlight = false;
 
+const RPC_URLS = (process.env.CELO_SEPOLIA_RPC?.split(",").map((s) => s.trim()).filter(Boolean) ?? [
+  "https://forno.celo-sepolia.celo-testnet.org",
+  "https://celo-sepolia.drpc.org",
+  "https://11142220.rpc.thirdweb.com",
+]);
+
 const celoSepolia = defineChain({
   id: 11142220,
   name: "Celo Sepolia",
   nativeCurrency: { name: "CELO-S", symbol: "CELO-S", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.CELO_SEPOLIA_RPC ?? "https://11142220.rpc.thirdweb.com"] },
+    default: { http: RPC_URLS },
   },
   blockExplorers: {
     default: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
   },
 });
+
+const rpcTransport = fallback(
+  RPC_URLS.map((u) => http(u, { retryCount: 2, retryDelay: 400 })),
+  { rank: false },
+);
 
 const chamaAbi = parseAbi([
   "function contribution() view returns (uint256)",
@@ -207,8 +219,8 @@ async function main() {
   const chamaAddr = getAddress(deployment.contracts.Chama) as `0x${string}`;
   const cUSDAddr = getAddress(deployment.contracts.cUSD) as `0x${string}`;
 
-  const publicClient = createPublicClient({ chain: celoSepolia, transport: http() });
-  const walletClient = createWalletClient({ account, chain: celoSepolia, transport: http() });
+  const publicClient = createPublicClient({ chain: celoSepolia, transport: rpcTransport });
+  const walletClient = createWalletClient({ account, chain: celoSepolia, transport: rpcTransport });
 
   const [contribution, memberCount, membersRaw] = await Promise.all([
     publicClient.readContract({

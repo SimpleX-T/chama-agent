@@ -1,19 +1,33 @@
-import { createPublicClient, defineChain, http, parseAbi } from "viem";
+import { createPublicClient, defineChain, fallback, http, parseAbi } from "viem";
 import deployment from "../../contracts/deployments/11142220.json";
+
+const RPC_URLS = [
+  "https://forno.celo-sepolia.celo-testnet.org",
+  "https://celo-sepolia.drpc.org",
+  "https://11142220.rpc.thirdweb.com",
+];
 
 export const celoSepolia = defineChain({
   id: 11142220,
   name: "Celo Sepolia",
   nativeCurrency: { name: "CELO-S", symbol: "CELO-S", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://11142220.rpc.thirdweb.com"] },
+    default: { http: RPC_URLS },
   },
   blockExplorers: {
     default: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
   },
 });
 
-export const publicClient = createPublicClient({ chain: celoSepolia, transport: http() });
+export const publicClient = createPublicClient({
+  chain: celoSepolia,
+  // Fallback across multiple public RPCs — any one of them can throttle or drop us
+  // and viem will transparently try the next.
+  transport: fallback(
+    RPC_URLS.map((u) => http(u, { retryCount: 2, retryDelay: 400 })),
+    { rank: false },
+  ),
+});
 
 export const CHAMA_ADDR = deployment.contracts.Chama as `0x${string}`;
 export const CUSD_ADDR = deployment.contracts.cUSD as `0x${string}`;

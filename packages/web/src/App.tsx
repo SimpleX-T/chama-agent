@@ -13,13 +13,16 @@ import {
   shortAddr,
 } from "./chain";
 
-type ChamaState = {
+type StaticConfig = {
   contribution: bigint;
   cycleLength: bigint;
   startTime: bigint;
-  currentCycle: bigint;
   memberCount: bigint;
   members: readonly `0x${string}`[];
+};
+
+type ChamaState = StaticConfig & {
+  currentCycle: bigint;
   currentPayee: `0x${string}`;
   cycleDeadline: bigint;
   contributedFlags: boolean[];
@@ -37,23 +40,28 @@ type ActivityEvent = {
   blockNumber: bigint;
 };
 
-async function readState(): Promise<ChamaState> {
-  const [contribution, cycleLength, startTime, currentCycle, memberCount, members, currentPayee, cycleDeadline] =
-    (await Promise.all([
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "contribution" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "cycleLength" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "startTime" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "currentCycle" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "memberCount" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "members" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "currentPayee" }),
-      publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "cycleDeadline" }),
-    ])) as [bigint, bigint, bigint, bigint, bigint, readonly `0x${string}`[], `0x${string}`, bigint];
+async function readStatic(): Promise<StaticConfig> {
+  const [contribution, cycleLength, startTime, memberCount, members] = (await Promise.all([
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "contribution" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "cycleLength" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "startTime" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "memberCount" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "members" }),
+  ])) as [bigint, bigint, bigint, bigint, readonly `0x${string}`[]];
+  return { contribution, cycleLength, startTime, memberCount, members };
+}
 
-  const cycle = currentCycle >= memberCount ? memberCount - 1n : currentCycle;
+async function readDynamic(cfg: StaticConfig): Promise<ChamaState> {
+  const [currentCycle, currentPayee, cycleDeadline] = (await Promise.all([
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "currentCycle" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "currentPayee" }),
+    publicClient.readContract({ address: CHAMA_ADDR, abi: chamaAbi, functionName: "cycleDeadline" }),
+  ])) as [bigint, `0x${string}`, bigint];
+
+  const cycle = currentCycle >= cfg.memberCount ? cfg.memberCount - 1n : currentCycle;
   const [contributedFlags, balances] = await Promise.all([
     Promise.all(
-      members.map(
+      cfg.members.map(
         (m) =>
           publicClient.readContract({
             address: CHAMA_ADDR,
@@ -64,7 +72,7 @@ async function readState(): Promise<ChamaState> {
       ),
     ),
     Promise.all(
-      members.map(
+      cfg.members.map(
         (m) =>
           publicClient.readContract({
             address: CUSD_ADDR,
@@ -75,17 +83,12 @@ async function readState(): Promise<ChamaState> {
       ),
     ),
   ]);
-  const potThisCycle = contributedFlags.filter(Boolean).length > 0
-    ? contribution * BigInt(contributedFlags.filter(Boolean).length)
-    : 0n;
+  const filledCount = contributedFlags.filter(Boolean).length;
+  const potThisCycle = filledCount > 0 ? cfg.contribution * BigInt(filledCount) : 0n;
 
   return {
-    contribution,
-    cycleLength,
-    startTime,
+    ...cfg,
     currentCycle,
-    memberCount,
-    members,
     currentPayee,
     cycleDeadline,
     contributedFlags,
@@ -187,20 +190,22 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
+    let cfg: StaticConfig | null = null;
     const refresh = async () => {
       try {
-        const [s, a] = await Promise.all([readState(), readActivity()]);
+        if (!cfg) cfg = await readStatic();
+        const [s, a] = await Promise.all([readDynamic(cfg), readActivity()]);
         if (!alive) return;
         setState(s);
         setActivity(a);
         setErr(null);
       } catch (e: any) {
         if (!alive) return;
-        setErr(e.message ?? String(e));
+        setErr(e.message?.split("\n")[0] ?? String(e));
       }
     };
     refresh();
-    const id = setInterval(refresh, 8000);
+    const id = setInterval(refresh, 12000);
     return () => {
       alive = false;
       clearInterval(id);
