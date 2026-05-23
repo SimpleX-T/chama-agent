@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "erc8004/v1",
+  "name": "ChamaAgent",
+  "description": "Trustless rotating savings groups (ROSCA / chama / ajo / esusu) on Celo. Members verified via Self Agent ID, agent escrows cUSD in a per-chama smart contract, and rotates the full pot to each member in fixed order. The agent has no custody — it can only trigger workflow steps; members approve the contract directly.",
+  "version": "0.1.0",
+  "owner": "0x7E65877b560Db3863baB4BC32F60e3c6693a9B06",
+  "capabilities": [
+    "rosca-management",
+    "stablecoin-escrow",
+    "scheduled-payouts",
+    "self-id-verification"
+  ],
+  "chains": ["celo-sepolia"],
+  "contracts": {
+    "11142220": {
+      "Chama": "0x0E6DfcF8904FAdAaB9cDd18421af49DF2069E623",
+      "MockCUSD": "0x20E43ac609b14081c00466E817dB18F93A0167b6"
+    }
+  },
+  "endpoints": [],
+  "links": {
+    "source": "https://github.com/SimpleX-T/chama-agent",
+    "readme": "https://github.com/SimpleX-T/chama-agent#readme"
+  },
+  "tags": ["celo", "rosca", "chama", "savings", "minipay", "stablecoin"]
+}

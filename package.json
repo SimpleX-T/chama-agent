@@ -1,0 +1,13 @@
+{
+  "name": "chama-agent",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Trustless ROSCA agent on Celo (ERC-8004). Members verified via Self ID, agent escrows cUSD, rotates payouts.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build:contracts": "pnpm --filter @chama/contracts build",
+    "deploy:sepolia": "pnpm --filter @chama/contracts deploy:sepolia",
+    "dev:agent": "pnpm --filter @chama/agent dev",
+    "dev:web": "pnpm --filter @chama/web dev"
+  }
+}

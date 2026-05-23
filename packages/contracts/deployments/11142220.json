@@ -1,0 +1,22 @@
+{
+  "network": "celoSepolia",
+  "chainId": "11142220",
+  "deployer": "0x7E65877b560Db3863baB4BC32F60e3c6693a9B06",
+  "agent": "0x7E65877b560Db3863baB4BC32F60e3c6693a9B06",
+  "members": [
+    "0xE6B0ad0C8719611f68e554e8e99C25Cd5A05b43f",
+    "0x4aA2C86edC6DCa0894e938d5Fb88C05d3Ff39e53",
+    "0x532ed8D17D06a8A9c36c3B49808B687238afb54A"
+  ],
+  "contracts": {
+    "MockCUSD": "0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638",
+    "cUSD": "0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638",
+    "Chama": "0xe68552774266A758c92A24Bb13F289d9360276aC"
+  },
+  "contributionWei": "1000000000000000000",
+  "cycleLengthSec": 300,
+  "deployedAt": "2026-05-22T23:56:22.139Z",
+  "txHashes": {
+    "Chama": "0x9f3cedac4343e07c092d749c96eefd2d31eb649437880f07a9a85c0fae6ea7a8"
+  }
+}
