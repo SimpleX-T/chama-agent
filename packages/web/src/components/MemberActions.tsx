@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Coins, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Coins, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { maxUint256 } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { CUSD_ADDR, chamaAbi, erc20Abi, mockCUSDAbi } from "@/lib/chain";
 import { cn } from "@/lib/cn";
 import { formatUnits } from "@/lib/format";
+import { useSelfVerification } from "@/hooks/useSelfVerification";
 
 type Props = {
   chamaAddress: `0x${string}`;
@@ -23,6 +24,7 @@ type Props = {
  */
 export function MemberActions({ chamaAddress, contribution }: Props) {
   const { address, isConnected } = useAccount();
+  const { verified } = useSelfVerification();
 
   // Membership check
   const { data: isMember } = useReadContract({
@@ -126,6 +128,12 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
           : "Two one-time steps: mint test mcUSD and approve the chama contract to spend it. Real cUSD on mainnet."
       }
     >
+      {verified && (
+        <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[oklch(0.78_0.18_152/0.4)] bg-[oklch(0.78_0.18_152/0.08)] px-2.5 py-1 text-[10px] uppercase tracking-wider text-[oklch(0.78_0.18_152)]">
+          <CheckCircle2 className="size-3" />
+          Self verified
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 mt-1">
         <StepCard
           step={1}

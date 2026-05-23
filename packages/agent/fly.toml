@@ -1,0 +1,23 @@
+# Fly.io configuration for the ChamaAgent cron service.
+# Deploy:
+#   fly launch --copy-config --no-deploy   # one-time setup
+#   fly secrets set DEPLOYER_PRIVATE_KEY=0x...
+#   fly deploy --dockerfile packages/agent/Dockerfile
+
+app = "chama-agent"
+primary_region = "iad"
+
+[build]
+  dockerfile = "packages/agent/Dockerfile"
+
+[env]
+  AGENT_TICK_MS = "15000"
+  CELO_SEPOLIA_RPC = "https://forno.celo-sepolia.celo-testnet.org,https://celo-sepolia.drpc.org,https://11142220.rpc.thirdweb.com"
+
+# Always-on, no HTTP service — the agent is a pure background worker.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[processes]
+  app = "pnpm tsx src/index.ts"

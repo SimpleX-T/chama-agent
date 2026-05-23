@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
 import { CreateChamaForm } from "@/components/CreateChamaForm";
+import { SelfVerificationCard } from "@/components/SelfVerificationCard";
+import { useSelfVerification } from "@/hooks/useSelfVerification";
 
 export function Create() {
+  const { verified } = useSelfVerification();
+
   return (
     <div className="mx-auto max-w-3xl px-5 sm:px-8 pt-16 pb-32">
       <motion.div
@@ -17,13 +21,28 @@ export function Create() {
         </h1>
         <p className="mt-5 text-lg text-[var(--color-fg-muted)] max-w-2xl leading-relaxed text-balance">
           One transaction deploys a per-group escrow contract. The same{" "}
-          <span className="text-[var(--color-fg)] font-medium">ChamaAgent #274</span> will operate it
-          alongside the demo. Members approve the new contract directly when they're ready to
+          <span className="text-[var(--color-fg)] font-medium">ChamaAgent #274</span> will operate
+          it alongside the demo. Members approve the new contract directly when they're ready to
           participate — and their funds never leave the escrow except into the rotation.
         </p>
 
-        <div className="mt-12">
-          <CreateChamaForm />
+        <div className="mt-10 space-y-6">
+          <SelfVerificationCard
+            title={verified ? "Verified — you can create" : "Step 1 · Verify with Self"}
+          />
+
+          <motion.div
+            animate={{ opacity: verified ? 1 : 0.4, pointerEvents: verified ? "auto" : "none" }}
+            transition={{ duration: 0.3 }}
+            aria-hidden={!verified}
+          >
+            <div className="mb-4">
+              <span className="text-xs uppercase tracking-[0.14em] text-[var(--color-fg-subtle)] font-medium">
+                Step 2 · Configure
+              </span>
+            </div>
+            <CreateChamaForm />
+          </motion.div>
         </div>
       </motion.div>
     </div>
