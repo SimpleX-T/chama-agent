@@ -20,7 +20,7 @@ export function ChamaDetail() {
     ? (paramAddress as `0x${string}`)
     : CHAMA_ADDR);
 
-  const { data, error } = useChamaState(address);
+  const { data, error, waitingForDeployment } = useChamaState(address);
   const { events } = useChamaActivity(address);
 
   const payedMembersThroughCycle = data && !data.completed ? Number(data.currentCycle) : data?.memberCount ?? 0n;
@@ -65,7 +65,19 @@ export function ChamaDetail() {
         )}
       </motion.header>
 
-      {error && (
+      {waitingForDeployment && (
+        <div className="surface px-5 py-4 text-sm">
+          <div className="flex items-center gap-3">
+            <span className="size-2 rounded-full bg-[var(--color-accent)] animate-pulse" />
+            <span className="font-medium">Confirming on-chain…</span>
+            <span className="text-[var(--color-fg-muted)]">
+              the chama contract was just deployed — waiting for the public RPCs to catch up
+            </span>
+          </div>
+        </div>
+      )}
+
+      {error && !waitingForDeployment && (
         <div className="surface px-5 py-4 border-[oklch(0.7_0.22_25/0.4)]! text-[oklch(0.7_0.22_25)] text-sm">
           RPC issue: {error}
         </div>

@@ -19,7 +19,18 @@ export type ChamaState = StaticConfig & {
   completed: boolean;
 };
 
-async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
+function isPropagationGlitch(err: unknown): boolean {
+  const msg = String((err as any)?.shortMessage ?? (err as any)?.message ?? err ?? "");
+  return (
+    msg.includes('returned no data ("0x")') ||
+    msg.includes("contract was not deployed") ||
+    msg.includes("invalid opcode") ||
+    msg.includes("could not be decoded") ||
+    msg.includes("execution reverted")
+  );
+}
+
+async function readStaticOnce(addr: `0x${string}`): Promise<StaticConfig> {
   const [contribution, cycleLength, startTime, memberCount, members] = (await Promise.all([
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "contribution" }),
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "cycleLength" }),
@@ -28,6 +39,27 @@ async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
     publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "members" }),
   ])) as [bigint, bigint, bigint, bigint, readonly `0x${string}`[]];
   return { contribution, cycleLength, startTime, memberCount, members };
+}
+
+/**
+ * Static-config reader with retry. After a chama is freshly deployed via the
+ * factory, a load-balanced RPC node we hit a moment later may not yet have the
+ * new bytecode; viem then returns "0x" / "returned no data". We retry with a
+ * gentle backoff (0.5s, 1s, 2s, 4s, 8s — total ~15s) before propagating the error.
+ */
+async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
+  const backoff = [500, 1000, 2000, 4000, 8000];
+  let lastErr: unknown;
+  for (let i = 0; i <= backoff.length; i++) {
+    try {
+      return await readStaticOnce(addr);
+    } catch (e) {
+      lastErr = e;
+      if (i === backoff.length || !isPropagationGlitch(e)) break;
+      await new Promise((r) => setTimeout(r, backoff[i]));
+    }
+  }
+  throw lastErr;
 }
 
 async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<ChamaState> {
@@ -73,13 +105,24 @@ export function useChamaState(address: `0x${string}` = CHAMA_ADDR, intervalMs = 
   const [data, setData] = useState<ChamaState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /** True while we're still waiting for the contract to show up at this RPC */
+  const [waitingForDeployment, setWaitingForDeployment] = useState(false);
 
   useEffect(() => {
     let alive = true;
     let cfg: StaticConfig | null = null;
+    setData(null);
+    setError(null);
+    setIsLoading(true);
+    setWaitingForDeployment(false);
     const tick = async () => {
       try {
-        if (!cfg) cfg = await readStatic(address);
+        if (!cfg) {
+          setWaitingForDeployment(true);
+          cfg = await readStatic(address);
+          if (!alive) return;
+          setWaitingForDeployment(false);
+        }
         const s = await readDynamic(address, cfg);
         if (!alive) return;
         setData(s);
@@ -89,6 +132,7 @@ export function useChamaState(address: `0x${string}` = CHAMA_ADDR, intervalMs = 
         if (!alive) return;
         setError(e?.shortMessage ?? e?.message?.split("\n")[0] ?? String(e));
         setIsLoading(false);
+        setWaitingForDeployment(false);
       }
     };
     tick();
@@ -99,5 +143,5 @@ export function useChamaState(address: `0x${string}` = CHAMA_ADDR, intervalMs = 
     };
   }, [address, intervalMs]);
 
-  return { data, error, isLoading };
+  return { data, error, isLoading, waitingForDeployment };
 }
