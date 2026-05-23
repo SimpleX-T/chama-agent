@@ -104,6 +104,21 @@ describe("Chama", () => {
     );
   });
 
+  it("each cycle gets its own full clock — fast cycles don't shrink later ones", async () => {
+    const { chama, alice, bob, carol } = await deploy();
+    // complete cycle 0 immediately (auto-payout fires on the third contribution)
+    await chama.contributeFor(alice.address);
+    await chama.contributeFor(bob.address);
+    await chama.contributeFor(carol.address);
+    expect(await chama.currentCycle()).to.equal(1);
+
+    const tip = (await ethers.provider.getBlock("latest"))!.timestamp;
+    const deadline = Number(await chama.cycleDeadline());
+    // Cycle 1's deadline should sit ~ONE_WEEK in the future from *now*, not
+    // 2 * ONE_WEEK from the original chama-creation time.
+    expect(deadline - tip).to.be.closeTo(ONE_WEEK, 5);
+  });
+
   it("rejects invalid construction", async () => {
     const [agent, alice] = await ethers.getSigners();
     const cUSD = await ethers.deployContract("MockCUSD");

@@ -19,6 +19,7 @@ contract Chama {
     address public immutable agent;
     uint256 public immutable contribution;
     uint256 public immutable cycleLength;
+    /// @notice Block timestamp at which the chama was constructed. Informational only.
     uint256 public immutable startTime;
 
     address[] private _members;
@@ -26,6 +27,12 @@ contract Chama {
     mapping(uint256 => mapping(address => bool)) public contributed;
     mapping(uint256 => uint256) public cycleContributions;
     uint256 public currentCycle;
+    /// @notice The current cycle's own clock — set on chama creation and reset
+    ///         every time _executePayout advances. The cycle deadline is
+    ///         `currentCycleStartTime + cycleLength`, so every cycle gets the
+    ///         full configured window regardless of how fast earlier cycles
+    ///         finished.
+    uint256 public currentCycleStartTime;
 
     event Contributed(address indexed member, uint256 indexed cycle, uint256 amount);
     event PayoutExecuted(address indexed payee, uint256 indexed cycle, uint256 amount);
@@ -53,6 +60,7 @@ contract Chama {
         contribution = contribution_;
         cycleLength = cycleLength_;
         startTime = block.timestamp;
+        currentCycleStartTime = block.timestamp;
         for (uint256 i = 0; i < members_.length; i++) {
             address m = members_[i];
             if (isMember[m]) revert DuplicateMember(m);
@@ -102,7 +110,7 @@ contract Chama {
         if (cycle >= _members.length) revert ChamaAlreadyCompleted();
 
         bool allContributed = cycleContributions[cycle] == contribution * _members.length;
-        bool deadlinePassed = block.timestamp >= startTime + (cycle + 1) * cycleLength;
+        bool deadlinePassed = block.timestamp >= currentCycleStartTime + cycleLength;
         if (!allContributed && !deadlinePassed) revert CycleNotReady();
 
         if (!allContributed) {
@@ -115,6 +123,8 @@ contract Chama {
         uint256 pot = cycleContributions[cycle];
 
         currentCycle = cycle + 1;
+        // Reset the cycle clock — the next cycle gets its own full window.
+        currentCycleStartTime = block.timestamp;
         emit PayoutExecuted(payee, cycle, pot);
         emit CycleAdvanced(currentCycle);
         if (currentCycle == _members.length) emit ChamaCompleted();
@@ -136,6 +146,6 @@ contract Chama {
     }
 
     function cycleDeadline() external view returns (uint256) {
-        return startTime + (currentCycle + 1) * cycleLength;
+        return currentCycleStartTime + cycleLength;
     }
 }

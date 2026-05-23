@@ -41,6 +41,7 @@ export const chamaAbi = parseAbi([
   "function contribution() view returns (uint256)",
   "function cycleLength() view returns (uint256)",
   "function startTime() view returns (uint256)",
+  "function currentCycleStartTime() view returns (uint256)",
   "function currentCycle() view returns (uint256)",
   "function memberCount() view returns (uint256)",
   "function members() view returns (address[])",
