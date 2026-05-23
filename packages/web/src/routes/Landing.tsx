@@ -63,6 +63,7 @@ export function Landing() {
               contributedFlags={data?.contributedFlags ?? placeholderMembers.map(() => false)}
               potValue={data?.potThisCycle ?? 0n}
               contribution={data?.contribution ?? 0n}
+              isActive={data?.isActive}
               completed={data?.completed}
             />
           </motion.div>
@@ -132,6 +133,7 @@ export function Landing() {
                   contributedFlags={data?.contributedFlags ?? placeholderMembers.map(() => false)}
                   potValue={data?.potThisCycle ?? 0n}
                   contribution={data?.contribution ?? 0n}
+                  isActive={data?.isActive}
                   completed={data?.completed}
                   size={400}
                 />

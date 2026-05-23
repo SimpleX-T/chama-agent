@@ -94,6 +94,7 @@ export function ChamaDetail() {
               contributedFlags={data.contributedFlags}
               potValue={data.potThisCycle}
               contribution={data.contribution}
+              isActive={data.isActive}
               completed={data.completed}
               size={520}
             />
