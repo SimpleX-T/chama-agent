@@ -1,30 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ChamaAgent · trustless ROSCA on Celo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>ChamaAgent — Trustless rotating savings on Celo</title>
+    <meta
+      name="description"
+      content="ChamaAgent operates trustless rotating savings groups (ROSCA / chama / ajo / esusu) on Celo. Members pool stablecoins; the agent — registered on ERC-8004 — rotates the full pot to each member in turn, and never touches the funds."
+    />
+    <meta property="og:title" content="ChamaAgent" />
+    <meta property="og:description" content="The treasurer is a contract. ERC-8004 agent operating trustless rotating savings on Celo." />
+    <meta property="og:image" content="https://raw.githubusercontent.com/SimpleX-T/chama-agent/main/packages/contracts/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
-    <style>
-      body {
-        font-family: "Inter", system-ui, sans-serif;
-        background:
-          radial-gradient(at 30% 0%, rgba(252, 211, 77, 0.06), transparent 50%),
-          radial-gradient(at 80% 100%, rgba(34, 197, 94, 0.05), transparent 50%),
-          #09090b;
-        color: #fafafa;
-        min-height: 100vh;
-      }
-      .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
-    </style>
   </head>
-  <body>
+  <body class="bg-bg text-fg antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,0 +1,89 @@
+@import "tailwindcss";
+@import "@rainbow-me/rainbowkit/styles.css";
+
+@theme {
+  --font-display: "Geist", "Inter", system-ui, sans-serif;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", "Times New Roman", serif;
+
+  --color-bg: oklch(0.145 0 0);          /* zinc-950 base */
+  --color-bg-elevated: oklch(0.205 0 0); /* zinc-900 */
+  --color-bg-overlay: oklch(0.25 0 0);   /* zinc-800/40 over bg */
+  --color-fg: oklch(0.985 0 0);          /* zinc-50 */
+  --color-fg-muted: oklch(0.708 0 0);    /* zinc-400 */
+  --color-fg-subtle: oklch(0.488 0 0);   /* zinc-500 */
+  --color-border: oklch(0.269 0 0);      /* zinc-800 */
+  --color-border-strong: oklch(0.371 0 0);
+  --color-accent: oklch(0.86 0.18 90);   /* gold/amber 400-ish, Celo vibe */
+  --color-accent-soft: oklch(0.86 0.18 90 / 0.12);
+  --color-success: oklch(0.78 0.18 152);
+  --color-danger: oklch(0.7 0.22 25);
+
+  --radius-card: 18px;
+  --radius-tile: 14px;
+
+  --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 1px 24px -8px oklch(0 0 0 / 0.6);
+  --shadow-glow: 0 0 32px -6px oklch(0.86 0.18 90 / 0.3);
+}
+
+@layer base {
+  html { color-scheme: dark; }
+
+  body {
+    background:
+      radial-gradient(1200px 600px at 20% -10%, oklch(0.86 0.18 90 / 0.08), transparent 60%),
+      radial-gradient(1000px 500px at 90% 110%, oklch(0.65 0.22 142 / 0.05), transparent 60%),
+      var(--color-bg);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-bg);
+  }
+
+  /* refined scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+}
+
+@layer utilities {
+  /* Pristine subtle border with a top highlight — Linear-esque */
+  .surface {
+    background: linear-gradient(180deg, oklch(1 0 0 / 0.025), transparent 40%), var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-tile {
+    background: oklch(0.205 0 0 / 0.6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-tile);
+    backdrop-filter: blur(8px);
+  }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Tabular numerics for ticking countdowns & balances */
+  .nums { font-variant-numeric: tabular-nums; }
+
+  /* Hide RainbowKit modal scroll lock from breaking layout */
+  .rk-only { display: contents; }
+}
+
+/* RainbowKit dark tweak to align with our palette */
+[data-rk] {
+  --rk-colors-accentColor: var(--color-accent);
+  --rk-colors-accentColorForeground: var(--color-bg);
+  --rk-radii-modal: 18px;
+  --rk-radii-actionButton: 12px;
+  --rk-radii-connectButton: 12px;
+  --rk-fonts-body: var(--font-sans);
+}

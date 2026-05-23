@@ -1,0 +1,199 @@
+import { useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ExternalLink } from "lucide-react";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { CountdownRing } from "@/components/CountdownRing";
+import { MemberCard } from "@/components/MemberCard";
+import { RotationVisualizer } from "@/components/RotationVisualizer";
+import { Stat } from "@/components/Stat";
+import { useChamaActivity } from "@/hooks/useChamaActivity";
+import { useChamaState } from "@/hooks/useChamaState";
+import { AGENT_ADDR, CHAMA_ADDR, CUSD_ADDR } from "@/lib/chain";
+import { explorer, formatUnits, shortAddr } from "@/lib/format";
+
+export function ChamaDetail() {
+  const { address: paramAddress } = useParams<{ address: string }>();
+  const address = (paramAddress && paramAddress !== "featured"
+    ? (paramAddress as `0x${string}`)
+    : CHAMA_ADDR);
+
+  const { data, error } = useChamaState(address);
+  const { events } = useChamaActivity(address);
+
+  const payedMembersThroughCycle = data && !data.completed ? Number(data.currentCycle) : data?.memberCount ?? 0n;
+
+  const memberLabel = useMemo(
+    () => (addr: string) => {
+      if (!data) return "?";
+      const i = data.members.findIndex((m) => m.toLowerCase() === addr.toLowerCase());
+      return i >= 0 ? `MEMBER ${i + 1}` : shortAddr(addr);
+    },
+    [data?.members],
+  );
+
+  return (
+    <div className="mx-auto max-w-6xl px-5 sm:px-8 pt-12 pb-24 space-y-12">
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="flex flex-wrap items-end justify-between gap-4"
+      >
+        <div>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-fg-subtle)] font-medium">
+            Chama detail
+          </p>
+          <h1 className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight">
+            {data?.completed ? "Rotation complete" : "Live rotation"}
+          </h1>
+          <a
+            href={explorer(address)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+          >
+            {address}
+            <ExternalLink className="size-3.5" />
+          </a>
+        </div>
+        {data && !data.completed && (
+          <CountdownRing deadline={data.cycleDeadline} total={data.cycleLength} size={76} />
+        )}
+      </motion.header>
+
+      {error && (
+        <div className="surface px-5 py-4 border-[oklch(0.7_0.22_25/0.4)]! text-[oklch(0.7_0.22_25)] text-sm">
+          RPC issue: {error}
+        </div>
+      )}
+
+      {/* Top section: viz + stats */}
+      <section className="grid gap-10 lg:grid-cols-[3fr_2fr] items-start">
+        <div className="surface p-6 sm:p-10 flex items-center justify-center">
+          {data ? (
+            <RotationVisualizer
+              members={data.members}
+              currentCycle={data.currentCycle}
+              memberCount={data.memberCount}
+              contributedFlags={data.contributedFlags}
+              potValue={data.potThisCycle}
+              contribution={data.contribution}
+              completed={data.completed}
+              size={520}
+            />
+          ) : (
+            <div className="aspect-square w-full max-w-[520px] animate-pulse rounded-3xl bg-white/[0.02]" />
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 self-start">
+          <Stat
+            label="Status"
+            value={
+              !data
+                ? "—"
+                : data.completed
+                  ? "Completed"
+                  : `Cycle ${data.currentCycle.toString()} / ${data.memberCount.toString()}`
+            }
+            accent={data?.completed ? "green" : "gold"}
+          />
+          <Stat
+            label="Pot this cycle"
+            value={data ? formatUnits(data.potThisCycle) : "—"}
+            hint="mcUSD"
+          />
+          <Stat
+            label="Contribution"
+            value={data ? formatUnits(data.contribution) : "—"}
+            hint="mcUSD per member per cycle"
+          />
+          <Stat
+            label="Cycle length"
+            value={data ? `${Number(data.cycleLength) / 60} min` : "—"}
+          />
+          <Stat
+            label="Paid so far"
+            value={data ? `${payedMembersThroughCycle.toString()}` : "—"}
+            hint={data ? `of ${data.memberCount.toString()} members` : "—"}
+          />
+          <Stat
+            label="Members"
+            value={data ? data.memberCount.toString() : "—"}
+            hint="fixed-order rotation"
+          />
+        </div>
+      </section>
+
+      {/* Members */}
+      <section>
+        <SectionHead title="Members" hint="Tap to view on Blockscout" />
+        {data ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.members.map((m, i) => (
+              <MemberCard
+                key={m}
+                index={i}
+                address={m}
+                balance={data.balances[i]}
+                hasContributed={data.contributedFlags[i]}
+                isCurrentPayee={!data.completed && Number(data.currentCycle) === i}
+                hasBeenPaid={data.completed || Number(data.currentCycle) > i}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="surface h-28 animate-pulse" />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Activity */}
+      <section>
+        <SectionHead title="Recent activity" hint="On-chain events" />
+        <ActivityFeed events={events} memberLabel={memberLabel} />
+      </section>
+
+      {/* Addresses */}
+      <section>
+        <SectionHead title="Contracts" />
+        <div className="surface divide-y divide-[var(--color-border)]/60">
+          <AddrRow label="Chama" addr={address} />
+          <AddrRow label="mcUSD" addr={CUSD_ADDR} />
+          <AddrRow label="Agent wallet" addr={AGENT_ADDR} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SectionHead({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="flex items-end justify-between mb-4">
+      <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+      {hint && <p className="text-xs text-[var(--color-fg-subtle)]">{hint}</p>}
+    </div>
+  );
+}
+
+function AddrRow({ label, addr }: { label: string; addr: string }) {
+  return (
+    <a
+      href={explorer(addr)}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors group"
+    >
+      <span className="text-sm font-medium">{label}</span>
+      <span className="font-mono text-xs text-[var(--color-fg-muted)] group-hover:text-[var(--color-accent)] transition-colors flex items-center gap-1.5">
+        {addr}
+        <ExternalLink className="size-3.5" />
+      </span>
+    </a>
+  );
+}
