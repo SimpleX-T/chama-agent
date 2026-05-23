@@ -11,12 +11,14 @@
   "contracts": {
     "MockCUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
     "cUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
-    "Chama": "0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8"
+    "Chama": "0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8",
+    "ChamaFactory": "0xa3f4e34254a3fd1278d6DD9bF02F1b12069210Ac"
   },
   "contributionWei": "1000000000000000000",
   "cycleLengthSec": 300,
   "deployedAt": "2026-05-23T01:11:56.193Z",
   "txHashes": {
     "Chama": "0xc09c5fd1ce39a98fdb70f7dfa95f8f97f93fab6c738d711a57e87ef4481d12e9"
-  }
+  },
+  "factoryDeployedAt": "2026-05-23T02:10:22.912Z"
 }

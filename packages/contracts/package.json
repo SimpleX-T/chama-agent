@@ -7,6 +7,8 @@
     "test": "hardhat test",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network celoSepolia",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network celo",
+    "deploy-factory:sepolia": "hardhat run scripts/deploy-factory.ts --network celoSepolia",
+    "deploy-factory:mainnet": "hardhat run scripts/deploy-factory.ts --network celo",
     "demo:sepolia": "hardhat run scripts/demo.ts --network celoSepolia",
     "setup:sepolia": "hardhat run scripts/setup-members.ts --network celoSepolia",
     "inspect:sepolia": "hardhat run scripts/inspect.ts --network celoSepolia",
