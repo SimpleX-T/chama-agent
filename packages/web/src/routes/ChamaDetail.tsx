@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { CountdownRing } from "@/components/CountdownRing";
+import { CycleActions } from "@/components/CycleActions";
 import { MemberActions } from "@/components/MemberActions";
 import { MemberCard } from "@/components/MemberCard";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
@@ -128,11 +129,34 @@ export function ChamaDetail() {
         </div>
       </section>
 
+      {/* Cycle actions — permissionless trigger for whoever's around */}
+      {data && !data.completed && (
+        <section>
+          <SectionHead title="Cycle status" hint="Permissionless — anyone can advance" />
+          <CycleActions
+            chamaAddress={address}
+            currentCycle={data.currentCycle}
+            memberCount={data.memberCount}
+            contributedFlags={data.contributedFlags}
+            cycleDeadline={data.cycleDeadline}
+            potThisCycle={data.potThisCycle}
+            payee={data.currentPayee}
+            payeeIndex={Number(data.currentCycle)}
+            contribution={data.contribution}
+            completed={data.completed}
+          />
+        </section>
+      )}
+
       {/* Member self-serve actions */}
       {data && !data.completed && (
         <section>
           <SectionHead title="Your participation" hint="Member-side onboarding" />
-          <MemberActions chamaAddress={address} contribution={data.contribution} />
+          <MemberActions
+            chamaAddress={address}
+            contribution={data.contribution}
+            currentCycle={data.currentCycle}
+          />
         </section>
       )}
 

@@ -84,11 +84,22 @@ describe("Chama", () => {
     );
   });
 
-  it("only the agent can executePayout", async () => {
-    const { chama, alice } = await deploy();
-    await expect(chama.connect(alice).executePayout()).to.be.revertedWithCustomError(
+  it("executePayout is permissionless once the cycle is ready", async () => {
+    const { chama, alice, bob, carol, stranger } = await deploy();
+    for (const u of [alice, bob, carol]) await chama.contributeFor(u.address);
+    // a wallet that's neither the agent nor a member can advance the cycle
+    await expect(chama.connect(stranger).executePayout())
+      .to.emit(chama, "PayoutExecuted")
+      .withArgs(alice.address, 0, CONTRIB * 3n);
+  });
+
+  it("executePayout still reverts before the cycle is ready, regardless of caller", async () => {
+    const { chama, alice, stranger } = await deploy();
+    await chama.contributeFor(alice.address); // only one member paid in
+    // not all contributed AND deadline not elapsed → CycleNotReady
+    await expect(chama.connect(stranger).executePayout()).to.be.revertedWithCustomError(
       chama,
-      "NotAgent",
+      "CycleNotReady",
     );
   });
 

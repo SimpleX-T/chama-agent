@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { CheckCircle2, Coins, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, Coins, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { maxUint256 } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { CUSD_ADDR, chamaAbi, erc20Abi, mockCUSDAbi } from "@/lib/chain";
@@ -12,6 +12,7 @@ import { useSelfVerification } from "@/hooks/useSelfVerification";
 type Props = {
   chamaAddress: `0x${string}`;
   contribution: bigint;
+  currentCycle: bigint;
 };
 
 /**
@@ -22,7 +23,7 @@ type Props = {
  *  - If member, balance, no allowance → approve the chama
  *  - If member, balance + allowance → ready (agent will operate)
  */
-export function MemberActions({ chamaAddress, contribution }: Props) {
+export function MemberActions({ chamaAddress, contribution, currentCycle }: Props) {
   const { address, isConnected } = useAccount();
   const { verified } = useSelfVerification();
 
@@ -56,6 +57,14 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
     query: { enabled: !!address },
   });
 
+  const { data: contributedThisCycle, refetch: refetchContrib } = useReadContract({
+    address: chamaAddress,
+    abi: chamaAbi,
+    functionName: "contributed",
+    args: address ? [currentCycle, address] : undefined,
+    query: { enabled: !!address && !!memberHit },
+  });
+
   // Write hooks
   const { writeContract: mintWrite, data: mintHash, isPending: mintPending } = useWriteContract();
   const { isLoading: mintMining, isSuccess: mintDone } = useWaitForTransactionReceipt({ hash: mintHash });
@@ -63,12 +72,21 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
   const { writeContract: approveWrite, data: approveHash, isPending: approvePending } = useWriteContract();
   const { isLoading: approveMining, isSuccess: approveDone } = useWaitForTransactionReceipt({ hash: approveHash });
 
+  const { writeContract: payWrite, data: payHash, isPending: payPending } = useWriteContract();
+  const { isLoading: payMining, isSuccess: payDone } = useWaitForTransactionReceipt({ hash: payHash });
+
   useEffect(() => {
     if (mintDone) refetchBal();
   }, [mintDone, refetchBal]);
   useEffect(() => {
     if (approveDone) refetchAllow();
   }, [approveDone, refetchAllow]);
+  useEffect(() => {
+    if (payDone) {
+      refetchBal();
+      refetchContrib();
+    }
+  }, [payDone, refetchBal, refetchContrib]);
 
   if (!isConnected) {
     return (
@@ -96,9 +114,11 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
 
   const bal = (balance as bigint | undefined) ?? 0n;
   const allow = (allowance as bigint | undefined) ?? 0n;
+  const hasPaid = !!contributedThisCycle;
   const needFromFaucet = bal < contribution;
   const needApprove = allow < contribution;
-  const ready = !needFromFaucet && !needApprove;
+  const canPay = !needFromFaucet && !needApprove && !hasPaid;
+  const ready = !needFromFaucet && !needApprove && hasPaid;
 
   const onMint = () => {
     if (!address) return;
@@ -117,15 +137,32 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
       args: [chamaAddress, maxUint256],
     });
   };
+  const onPay = () => {
+    if (!address) return;
+    payWrite({
+      address: chamaAddress,
+      abi: chamaAbi,
+      functionName: "contributeFor",
+      args: [address],
+    });
+  };
 
   return (
     <PanelShell
       icon={<Coins className="size-5" />}
-      title={ready ? "You're set up" : "Get ready to participate"}
+      title={
+        ready
+          ? "You're in for this cycle"
+          : canPay
+            ? "One step left"
+            : "Get ready to participate"
+      }
       body={
         ready
-          ? "Balance and approval are in place. The agent will pull your contribution when the cycle window opens."
-          : "Two one-time steps: mint test mcUSD and approve the chama contract to spend it. Real cUSD on mainnet."
+          ? `You've contributed ${formatUnits(contribution)} mcUSD for cycle ${currentCycle.toString()}. Sit back — the payout will reach the next member in line once everyone's in (or the deadline elapses).`
+          : canPay
+            ? `Balance and approval are in place. Pay in ${formatUnits(contribution)} mcUSD to commit your share of this cycle's pot.`
+            : "Three steps: mint test mcUSD, approve the chama contract, then contribute. Real cUSD on mainnet."
       }
     >
       {verified && (
@@ -134,7 +171,7 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
           Self verified
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 mt-1">
+      <div className="grid gap-3 sm:grid-cols-3 mt-1">
         <StepCard
           step={1}
           title="Fund"
@@ -159,6 +196,16 @@ export function MemberActions({ chamaAddress, contribution }: Props) {
           loading={approvePending || approveMining}
           onClick={onApprove}
           disabled={needFromFaucet}
+        />
+        <StepCard
+          step={3}
+          title={`Cycle ${currentCycle.toString()}`}
+          done={hasPaid}
+          value={hasPaid ? "Paid in" : `${formatUnits(contribution)} mcUSD due`}
+          actionLabel={hasPaid ? "Paid" : "Pay in now"}
+          loading={payPending || payMining}
+          onClick={onPay}
+          disabled={needFromFaucet || needApprove}
         />
       </div>
     </PanelShell>

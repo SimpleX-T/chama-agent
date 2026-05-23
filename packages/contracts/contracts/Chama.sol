@@ -7,10 +7,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice One contract instance = one chama. N members each contribute a fixed
 ///         amount of `token` per cycle; the cycle's full pot is paid out to one
 ///         member in a fixed rotation, one member per cycle, until all have been paid.
-/// @dev The `agent` address may only trigger executePayout — it never custodies funds.
-///      Members approve this contract (not the agent) for cUSD; the contract pulls
-///      via transferFrom on contributeFor(), which is permissionless so the agent
-///      is non-essential to liveness.
+/// @dev Both contributeFor() and executePayout() are permissionless — the contract
+///      itself enforces every invariant (one contribution per member per cycle,
+///      fixed payout order, no payout before the cycle is ready). The `agent`
+///      address is stored as metadata (handy for ERC-8004 attestations and event
+///      indexing) but has no special on-chain privilege. If the courtesy agent
+///      service is offline, any member — or anyone at all — can call these
+///      functions to keep the chama moving.
 contract Chama {
     IERC20 public immutable token;
     address public immutable agent;
@@ -31,17 +34,11 @@ contract Chama {
     event ChamaCompleted();
 
     error NotMember(address who);
-    error NotAgent();
     error AlreadyContributed();
     error CycleNotReady();
     error ChamaAlreadyCompleted();
     error InvalidConfig();
     error DuplicateMember(address who);
-
-    modifier onlyAgent() {
-        if (msg.sender != agent) revert NotAgent();
-        _;
-    }
 
     constructor(
         address token_,
@@ -80,10 +77,15 @@ contract Chama {
         require(token.transferFrom(member, address(this), contribution), "transferFrom failed");
     }
 
-    /// @notice Agent-only: push the cycle's pot to the next-in-line member and advance.
-    /// @dev Callable once per cycle. Requires all members contributed OR the
-    ///      cycle deadline has elapsed (in which case pot may be partial).
-    function executePayout() external onlyAgent {
+    /// @notice Permissionless: push the cycle's pot to the next-in-line member and advance.
+    /// @dev Callable once per cycle by anyone. Requires either all members
+    ///      contributed OR the cycle deadline elapsed (in which case the pot
+    ///      may be partial — defaulters are surfaced as Defaulted events).
+    ///      Removing access control here is safe because the contract enforces
+    ///      *who* gets paid (fixed rotation order), *how much* (only what's
+    ///      been contributed this cycle), and *when* (only after the cycle is
+    ///      ready). The agent address is preserved as event metadata only.
+    function executePayout() external {
         uint256 cycle = currentCycle;
         if (cycle >= _members.length) revert ChamaAlreadyCompleted();
 
