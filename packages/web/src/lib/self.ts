@@ -1,27 +1,32 @@
 /**
  * Self Protocol configuration.
  *
- * Identity Verification Hub addresses (Self's on-chain verifier):
- *  - Celo Sepolia (mock passports for dev): 0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74
- *  - Celo mainnet (real passports):         0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF
+ * Identity Verification Hub (Self's contracts):
+ *  - Celo Sepolia: 0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74
+ *  - Celo mainnet: 0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF
  *
- * MVP: we use the hub address as the verification endpoint so SelfQRcodeWrapper
- *      can complete the proof flow end-to-end. The wallet that scanned proves
- *      uniqueness + humanity through Self's ZK passport system; we record the
- *      result locally and let the UI gate creation actions.
+ * Our `ChamaVerifier` contract extends @selfxyz/contracts SelfVerificationRoot
+ * and registers a verification config (proof-of-humanity + OFAC) with the hub.
+ * The frontend points the QR `endpoint` at our verifier, not the hub. Self's
+ * hub routes the proof to our contract via the Poseidon-hashed scope.
  *
- * Stretch (next milestone): a thin `ChamaVerifiedRegistry.sol` contract that
- *      receives the verification callback from Self's hub and records
- *      `mapping(address => bool) verified` so on-chain Chama membership is
- *      gated by Self ID without trusting the client.
+ * Disclosures here MUST match the on-chain config:
+ *   olderThan: 0, forbiddenCountries: [], ofacEnabled: true
  */
+
+import deployment from "../../../contracts/deployments/11142220.json";
 
 export const SELF_HUB_SEPOLIA = "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74";
 export const SELF_HUB_MAINNET = "0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF";
 
+export const CHAMA_VERIFIER_ADDR =
+  ((deployment as any).contracts?.ChamaVerifier as `0x${string}` | undefined) ?? null;
+export const SELF_SCOPE_SEED =
+  ((deployment as any).self?.scopeSeed as string | undefined) ?? "chamaagent";
+
 export const SELF_APP_CONFIG = {
   appName: "ChamaAgent",
-  scope: "chama-agent-celo",
+  scope: SELF_SCOPE_SEED,
   logoBase64: "https://raw.githubusercontent.com/SimpleX-T/chama-agent/main/packages/contracts/icon.svg",
 };
 

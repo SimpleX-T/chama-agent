@@ -11,8 +11,12 @@ const accounts = DEPLOYER ? [DEPLOYER] : [];
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: '0.8.24',
-    settings: { optimizer: { enabled: true, runs: 200 } },
+    // 0.8.24 — our Chama / Factory / MockCUSD
+    // 0.8.28 — @selfxyz/contracts (SelfVerificationRoot et al)
+    compilers: [
+      { version: '0.8.24', settings: { optimizer: { enabled: true, runs: 200 } } },
+      { version: '0.8.28', settings: { optimizer: { enabled: true, runs: 200 } } },
+    ],
   },
   networks: {
     celoSepolia: {

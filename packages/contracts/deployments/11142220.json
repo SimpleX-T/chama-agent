@@ -12,7 +12,8 @@
     "MockCUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
     "cUSD": "0x6bEFAA89019d5B4eb9978069F44956f7c3649630",
     "Chama": "0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8",
-    "ChamaFactory": "0xa3f4e34254a3fd1278d6DD9bF02F1b12069210Ac"
+    "ChamaFactory": "0xa3f4e34254a3fd1278d6DD9bF02F1b12069210Ac",
+    "ChamaVerifier": "0xeA64FD5169B067b9dcfe6D318858cBc712953e62"
   },
   "contributionWei": "1000000000000000000",
   "cycleLengthSec": 300,
@@ -20,5 +21,17 @@
   "txHashes": {
     "Chama": "0xc09c5fd1ce39a98fdb70f7dfa95f8f97f93fab6c738d711a57e87ef4481d12e9"
   },
-  "factoryDeployedAt": "2026-05-23T02:10:22.912Z"
+  "factoryDeployedAt": "2026-05-23T02:10:22.912Z",
+  "self": {
+    "hub": "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74",
+    "scopeSeed": "chamaagent",
+    "scope": "10731653202640485134755649941631636069751361045618697503988090261726157448757",
+    "configId": "0x76dde44ad08950385c0a76f3f372f863fc83e28a1a0e0ac47ecfeee6cbaf50a7",
+    "config": {
+      "olderThan": "0",
+      "forbiddenCountries": [],
+      "ofacEnabled": true
+    },
+    "deployedAt": "2026-05-23T06:55:21.637Z"
+  }
 }
