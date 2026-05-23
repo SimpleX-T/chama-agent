@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Plus, ShieldAlert, Sparkles, X } from "lucide-react";
+import { Loader2, Plus, ShieldAlert, Sparkles, UserPlus, X } from "lucide-react";
 import { decodeEventLog, isAddress, parseUnits } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { CHAMA_FACTORY_ADDR, chamaFactoryAbi } from "@/lib/chain";
 import { cn } from "@/lib/cn";
+import { shortAddr } from "@/lib/format";
 
 type Preset = { label: string; seconds: number };
 const cycleLengthPresets: Preset[] = [
@@ -47,6 +48,22 @@ export function CreateChamaForm() {
   function removeMember(i: number) {
     if (members.length <= 2) return;
     setMembers((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  const alreadyIncluded = !!(
+    connected && members.some((m) => m.trim().toLowerCase() === connected.toLowerCase())
+  );
+
+  function addMyself() {
+    if (!connected || alreadyIncluded) return;
+    setMembers((prev) => {
+      const firstEmpty = prev.findIndex((m) => !m.trim());
+      if (firstEmpty >= 0) {
+        return prev.map((m, idx) => (idx === firstEmpty ? connected : m));
+      }
+      if (prev.length < 10) return [...prev, connected];
+      return prev;
+    });
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -139,15 +156,41 @@ export function CreateChamaForm() {
             </motion.div>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={addMember}
-          disabled={members.length >= 10}
-          className="inline-flex items-center gap-1.5 text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] disabled:opacity-40 transition-colors"
-        >
-          <Plus className="size-4" />
-          Add another member
-        </button>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <button
+            type="button"
+            onClick={addMember}
+            disabled={members.length >= 10}
+            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] disabled:opacity-40 transition-colors"
+          >
+            <Plus className="size-4" />
+            Add another member
+          </button>
+
+          {connected && (
+            <button
+              type="button"
+              onClick={addMyself}
+              disabled={alreadyIncluded || (members.length >= 10 && members.every((m) => m.trim()))}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-sm transition-colors",
+                alreadyIncluded
+                  ? "text-[oklch(0.78_0.18_152)] cursor-default"
+                  : "text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] disabled:opacity-40",
+              )}
+              title={
+                alreadyIncluded
+                  ? `${shortAddr(connected)} is already in the chama`
+                  : `Add ${shortAddr(connected)} (your connected wallet)`
+              }
+            >
+              <UserPlus className="size-4" />
+              {alreadyIncluded
+                ? `You're in (${shortAddr(connected)})`
+                : `Add me (${shortAddr(connected)})`}
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">
