@@ -31,6 +31,7 @@ export const SELF_APP_CONFIG = {
 };
 
 const STORAGE_PREFIX = "chamaagent:self-verified:";
+export const SELF_VERIFIED_EVENT = "chamaagent:self-verified";
 
 export function getStoredVerification(address: string | undefined): {
   verified: boolean;
@@ -53,9 +54,17 @@ export function setStoredVerification(address: string) {
     STORAGE_PREFIX + address.toLowerCase(),
     JSON.stringify({ at: Date.now() }),
   );
+  // Custom event — same-tab localStorage writes don't trigger 'storage' events,
+  // so we dispatch this to sync every useSelfVerification consumer.
+  window.dispatchEvent(
+    new CustomEvent(SELF_VERIFIED_EVENT, { detail: { address: address.toLowerCase() } }),
+  );
 }
 
 export function clearStoredVerification(address: string) {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_PREFIX + address.toLowerCase());
+  window.dispatchEvent(
+    new CustomEvent(SELF_VERIFIED_EVENT, { detail: { address: address.toLowerCase() } }),
+  );
 }
