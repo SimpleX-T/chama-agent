@@ -50,6 +50,7 @@ Submitted to:
 | Chama (3-member demo, 1 mcUSD/cycle, 5-min cycles) | `0xe68552774266A758c92A24Bb13F289d9360276aC` | [view](https://celo-sepolia.blockscout.com/address/0xe68552774266A758c92A24Bb13F289d9360276aC) |
 | MockCUSD | `0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638` | [view](https://celo-sepolia.blockscout.com/address/0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638) |
 | Agent wallet | `0x7E65877b560Db3863baB4BC32F60e3c6693a9B06` | [view](https://celo-sepolia.blockscout.com/address/0x7E65877b560Db3863baB4BC32F60e3c6693a9B06) |
+| **ERC-8004 Agent ID** | **#274** | [**8004scan**](https://8004scan.io/agents/celo-sepolia/274) |
 
 The deployed chama above has already completed a full 3-member rotation — every member contributed 3× and was paid out once. See the contract address page for the full event log.
 
@@ -106,7 +107,11 @@ For a manual rotation (no agent), use `pnpm --filter @chama/contracts demo:sepol
 
 ## ERC-8004
 
-Identity Registry on Celo Sepolia: `0x8004A818BFB912233c491871b3d84c89A494BD9e`. AgentCard JSON lives at [`agent-card.json`](./agent-card.json). Registration on-chain via `pnpm --filter @chama/contracts register-agent` (requires `AGENT_CARD_URI` in `.env` pointing to the raw GitHub URL of this file).
+- **Identity Registry (Celo Sepolia):** `0x8004A818BFB912233c491871b3d84c89A494BD9e`
+- **AgentCard:** [`packages/contracts/agent-card.json`](./packages/contracts/agent-card.json)
+- **Registered ChamaAgent:** [agent ID 274 on 8004scan](https://8004scan.io/agents/celo-sepolia/274) · [registration tx](https://celo-sepolia.blockscout.com/tx/0xc93704898c996202109c1567985db6fa8eb5e81702870a087657c90fc88bd04e)
+
+Re-register (e.g. after AgentCard updates) via `pnpm --filter @chama/contracts register-agent` (requires `AGENT_CARD_URI` in `.env`).
 
 ## Roadmap (post-Proof-of-Ship, before hackathon close)
 

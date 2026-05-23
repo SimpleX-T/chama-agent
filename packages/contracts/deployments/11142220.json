@@ -18,5 +18,11 @@
   "deployedAt": "2026-05-22T23:56:22.139Z",
   "txHashes": {
     "Chama": "0x9f3cedac4343e07c092d749c96eefd2d31eb649437880f07a9a85c0fae6ea7a8"
+  },
+  "erc8004": {
+    "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "agentId": "274",
+    "agentURI": "https://raw.githubusercontent.com/SimpleX-T/chama-agent/main/packages/contracts/agent-card.json",
+    "txHash": "0xc93704898c996202109c1567985db6fa8eb5e81702870a087657c90fc88bd04e"
   }
 }
