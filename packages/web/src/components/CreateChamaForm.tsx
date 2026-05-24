@@ -5,7 +5,8 @@ import { CalendarClock, Loader2, Plus, Sailboat, ShieldAlert, Sparkles, Sun, Use
 import { decodeEventLog, isAddress, parseUnits } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { CHAMA_FACTORY_ADDR, chamaFactoryAbi } from "@/lib/chain";
+import { chamaFactoryAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { cn } from "@/lib/cn";
 import { shortAddr } from "@/lib/format";
 
@@ -89,6 +90,8 @@ const templates: Template[] = [
 export function CreateChamaForm() {
   const navigate = useNavigate();
   const { address: connected } = useAccount();
+  const { contracts } = useActiveChain();
+  const factoryAddr = contracts.ChamaFactory;
   const [members, setMembers] = useState<string[]>(["", "", ""]);
   const [contribution, setContribution] = useState("1");
   const [cycleSeconds, setCycleSeconds] = useState(cycleLengthPresets[0].seconds);
@@ -155,10 +158,10 @@ export function CreateChamaForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!CHAMA_FACTORY_ADDR || !validation.valid) return;
+    if (!factoryAddr || !validation.valid) return;
     const valueWei = parseUnits(contribution, 18);
     writeContract({
-      address: CHAMA_FACTORY_ADDR,
+      address: factoryAddr,
       abi: chamaFactoryAbi,
       functionName: "createChama",
       args: [
@@ -174,7 +177,7 @@ export function CreateChamaForm() {
   // When the receipt lands, parse out the ChamaCreated event to find the new chama address
   if (isSuccess && receipt && txHash) {
     for (const log of receipt.logs) {
-      if (CHAMA_FACTORY_ADDR && log.address.toLowerCase() === CHAMA_FACTORY_ADDR.toLowerCase()) {
+      if (factoryAddr && log.address.toLowerCase() === factoryAddr.toLowerCase()) {
         try {
           const decoded = decodeEventLog({
             abi: chamaFactoryAbi,
@@ -197,7 +200,7 @@ export function CreateChamaForm() {
     }
   }
 
-  if (!CHAMA_FACTORY_ADDR) {
+  if (!factoryAddr) {
     return (
       <div className="surface px-6 py-8 text-sm text-[var(--color-fg-muted)]">
         ChamaFactory not deployed for this network. Deploy via{" "}

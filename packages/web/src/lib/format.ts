@@ -1,7 +1,19 @@
+// Default to mainnet (Celoscan); switch via the chain-aware variants below
+// when the wallet's connected to Sepolia.
 export const explorer = (addr: string) =>
-  `https://celo-sepolia.blockscout.com/address/${addr}`;
+  `https://celoscan.io/address/${addr}`;
 export const explorerTx = (hash: string) =>
-  `https://celo-sepolia.blockscout.com/tx/${hash}`;
+  `https://celoscan.io/tx/${hash}`;
+
+const EXPLORERS: Record<number, string> = {
+  42220: "https://celoscan.io",
+  11142220: "https://celo-sepolia.blockscout.com",
+};
+
+export const explorerForChain = (chainId: number, addr: string) =>
+  `${EXPLORERS[chainId] ?? EXPLORERS[42220]}/address/${addr}`;
+export const explorerTxForChain = (chainId: number, hash: string) =>
+  `${EXPLORERS[chainId] ?? EXPLORERS[42220]}/tx/${hash}`;
 
 export function shortAddr(a: string, head = 6, tail = 4) {
   if (!a) return "";

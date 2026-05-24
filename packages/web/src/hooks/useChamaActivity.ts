@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useBlockNumber } from "wagmi";
-import { chamaAbi, publicClient } from "@/lib/chain";
+import { chamaAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 
 export type ActivityKind = "Contributed" | "PayoutExecuted" | "CycleAdvanced" | "Defaulted" | "ChamaCompleted";
 
@@ -18,7 +19,10 @@ export type ActivityEvent = {
 const WINDOW = 999n;
 const WINDOWS = 5;
 
-async function readActivity(address: `0x${string}`): Promise<ActivityEvent[]> {
+async function readActivity(
+  publicClient: ReturnType<typeof useActiveChain>["publicClient"],
+  address: `0x${string}`,
+): Promise<ActivityEvent[]> {
   const latest = await publicClient.getBlockNumber();
   const eventsFilter = chamaAbi.filter((x) => x.type === "event");
   const logs: any[] = [];
@@ -80,6 +84,7 @@ async function readActivity(address: `0x${string}`): Promise<ActivityEvent[]> {
 }
 
 export function useChamaActivity(address: `0x${string}`) {
+  const { publicClient, chainId } = useActiveChain();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { data: blockNumber } = useBlockNumber({ watch: true });
@@ -88,7 +93,7 @@ export function useChamaActivity(address: `0x${string}`) {
     let alive = true;
     (async () => {
       try {
-        const e = await readActivity(address);
+        const e = await readActivity(publicClient, address);
         if (!alive) return;
         setEvents(e);
         setError(null);
@@ -100,7 +105,7 @@ export function useChamaActivity(address: `0x${string}`) {
     return () => {
       alive = false;
     };
-  }, [address, blockNumber]);
+  }, [address, blockNumber, chainId, publicClient]);
 
   return { events, error };
 }

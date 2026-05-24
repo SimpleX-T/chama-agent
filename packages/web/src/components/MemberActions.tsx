@@ -10,7 +10,8 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import { CUSD_ADDR, chamaAbi, erc20Abi, mockCUSDAbi } from "@/lib/chain";
+import { chamaAbi, erc20Abi, mockCUSDAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { cn } from "@/lib/cn";
 import { formatUnits } from "@/lib/format";
 import { useSelfVerification } from "@/hooks/useSelfVerification";
@@ -32,6 +33,8 @@ type Props = {
 export function MemberActions({ chamaAddress, contribution, currentCycle }: Props) {
   const { address, isConnected } = useAccount();
   const { verified } = useSelfVerification();
+  const { contracts, cUSDSymbol, isTestnet } = useActiveChain();
+  const cUSDAddr = contracts.cUSD;
 
   // Membership check
   const { data: isMember } = useReadContract({
@@ -48,7 +51,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
     : false;
 
   const { data: balance, refetch: refetchBal } = useReadContract({
-    address: CUSD_ADDR,
+    address: cUSDAddr,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
@@ -56,7 +59,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
   });
 
   const { data: allowance, refetch: refetchAllow } = useReadContract({
-    address: CUSD_ADDR,
+    address: cUSDAddr,
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, chamaAddress] : undefined,
@@ -137,9 +140,9 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
   const ready = !needFromFaucet && !needApprove && hasPaid;
 
   const onMint = () => {
-    if (!address) return;
+    if (!address || !isTestnet) return;
     mintWrite({
-      address: CUSD_ADDR,
+      address: cUSDAddr,
       abi: mockCUSDAbi,
       functionName: "mint",
       args: [address, contribution * 10n],
@@ -147,7 +150,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
   };
   const onApprove = () => {
     approveWrite({
-      address: CUSD_ADDR,
+      address: cUSDAddr,
       abi: erc20Abi,
       functionName: "approve",
       args: [chamaAddress, maxUint256],

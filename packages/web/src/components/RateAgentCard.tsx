@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { CheckCircle2, Loader2, Star } from "lucide-react";
 import { useAccount, useBlockNumber, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { ERC8004_AGENT_ID, ERC8004_REPUTATION, reputationRegistryAbi } from "@/lib/chain";
+import { reputationRegistryAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -24,15 +25,18 @@ type Props = {
  */
 export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Props) {
   const { address, isConnected } = useAccount();
+  const { erc8004, explorer } = useActiveChain();
+  const REPUTATION = erc8004.reputationRegistry;
+  const AGENT_ID = erc8004.agentId ?? 0n;
   const [selected, setSelected] = useState<5 | 4 | 3 | null>(null);
 
   const { data: blockNumber } = useBlockNumber({ watch: true });
   const { data: lastIndex, refetch } = useReadContract({
-    address: ERC8004_REPUTATION,
+    address: REPUTATION,
     abi: reputationRegistryAbi,
     functionName: "getLastIndex",
-    args: address ? [ERC8004_AGENT_ID, address] : undefined,
-    query: { enabled: !!address },
+    args: address && AGENT_ID > 0n ? [AGENT_ID, address] : undefined,
+    query: { enabled: !!address && AGENT_ID > 0n },
   });
   useEffect(() => {
     if (address) refetch();
@@ -53,19 +57,19 @@ export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Pro
   const attestedCountTotal = lastIndex ? Number(lastIndex as bigint) : 0;
 
   function submit(score: 5 | 4 | 3) {
-    if (!address) return;
+    if (!address || AGENT_ID === 0n) return;
     setSelected(score);
     writeContract({
-      address: ERC8004_REPUTATION,
+      address: REPUTATION,
       abi: reputationRegistryAbi,
       functionName: "giveFeedback",
       args: [
-        ERC8004_AGENT_ID,
+        AGENT_ID,
         BigInt(score * 20), // 5 → 100, 4 → 80, 3 → 60
         0,
         "rosca-cycle",
         `cycle-${lastPaidCycle.toString()}`,
-        `https://celo-sepolia.blockscout.com/address/${chamaAddress}`,
+        `${explorer}/address/${chamaAddress}`,
         "",
         "0x0000000000000000000000000000000000000000000000000000000000000000",
       ],
@@ -93,12 +97,12 @@ export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Pro
           <p className="mt-1.5 text-sm text-[var(--color-fg-muted)] leading-relaxed text-pretty">
             Post an on-chain attestation to{" "}
             <a
-              href={`https://8004scan.io/agents/celo-sepolia/${ERC8004_AGENT_ID.toString()}`}
+              href={`https://8004scan.io/agents/${erc8004.scanSlug}/${AGENT_ID.toString()}`}
               target="_blank"
               rel="noreferrer"
               className="text-[var(--color-fg)] font-medium underline-offset-2 hover:underline"
             >
-              Agent #{ERC8004_AGENT_ID.toString()}
+              Agent #{AGENT_ID.toString()}
             </a>{" "}
             via the ERC-8004 Reputation Registry. Higher scores lift the agent's 8004scan rank;
             future chamas read this when choosing an operator. Self-attestation is blocked at

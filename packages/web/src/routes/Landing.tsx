@@ -7,16 +7,18 @@ import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
 import { Stat } from "@/components/Stat";
-import { CHAMA_ADDR, DEPLOY_MEMBERS } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { useChamaState } from "@/hooks/useChamaState";
 import { explorer, formatUnits, shortAddr } from "@/lib/format";
 
 export function Landing() {
-  const { data } = useChamaState(CHAMA_ADDR, 12_000);
+  const { contracts, deployMembers } = useActiveChain();
+  const featuredAddr = contracts.Chama ?? contracts.ChamaFactory ?? null;
+  const { data } = useChamaState(featuredAddr ?? undefined);
 
   const placeholderMembers = useMemo(
-    () => (data?.members ?? DEPLOY_MEMBERS) as readonly `0x${string}`[],
-    [data?.members],
+    () => (data?.members ?? deployMembers) as readonly `0x${string}`[],
+    [data?.members, deployMembers],
   );
 
   return (
@@ -103,7 +105,7 @@ export function Landing() {
                   three lump-sum payouts have happened, exactly when each member needed them.
                 </p>
                 <div className="mt-6 grid grid-cols-2 gap-2 text-xs">
-                  {(data?.members ?? DEPLOY_MEMBERS).map((m, i) => (
+                  {(data?.members ?? deployMembers).map((m, i) => (
                     <a
                       key={m}
                       href={explorer(m)}
@@ -117,12 +119,12 @@ export function Landing() {
                   ))}
                 </div>
                 <a
-                  href={explorer(CHAMA_ADDR)}
+                  href={explorer((featuredAddr ?? "0x"))}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-6 inline-flex items-center gap-1.5 text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
                 >
-                  <span className="font-mono">{shortAddr(CHAMA_ADDR)}</span>
+                  <span className="font-mono">{shortAddr((featuredAddr ?? "0x"))}</span>
                   <ExternalLink className="size-3.5" />
                 </a>
               </div>

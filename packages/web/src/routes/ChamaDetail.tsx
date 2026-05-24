@@ -12,17 +12,19 @@ import { RotationVisualizer } from "@/components/RotationVisualizer";
 import { Stat } from "@/components/Stat";
 import { useChamaActivity } from "@/hooks/useChamaActivity";
 import { useChamaState } from "@/hooks/useChamaState";
-import { AGENT_ADDR, CHAMA_ADDR, CUSD_ADDR } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { explorer, formatUnits, shortAddr } from "@/lib/format";
 
 export function ChamaDetail() {
   const { address: paramAddress } = useParams<{ address: string }>();
+  const { contracts, agentAddress } = useActiveChain();
+  // "featured" → newest factory chama if present, else the seed Chama if any, else null
   const address = (paramAddress && paramAddress !== "featured"
     ? (paramAddress as `0x${string}`)
-    : CHAMA_ADDR);
+    : (contracts.Chama ?? contracts.ChamaFactory ?? null));
 
-  const { data, error, waitingForDeployment } = useChamaState(address);
-  const { events } = useChamaActivity(address);
+  const { data, error, waitingForDeployment } = useChamaState(address ?? undefined);
+  const { events } = useChamaActivity(address ?? ("0x0000000000000000000000000000000000000000" as `0x${string}`));
 
   const payedMembersThroughCycle = data && !data.completed ? Number(data.currentCycle) : data?.memberCount ?? 0n;
 
@@ -251,8 +253,8 @@ export function ChamaDetail() {
         <SectionHead title="Contracts" />
         <div className="surface divide-y divide-[var(--color-border)]/60">
           <AddrRow label="Chama" addr={address} />
-          <AddrRow label="mcUSD" addr={CUSD_ADDR} />
-          <AddrRow label="Agent wallet" addr={AGENT_ADDR} />
+          <AddrRow label="cUSD" addr={contracts.cUSD} />
+          {agentAddress && <AddrRow label="Agent wallet" addr={agentAddress} />}
         </div>
       </section>
     </div>

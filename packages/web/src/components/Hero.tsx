@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Coins, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
-import { ERC8004_AGENT_ID } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 
 const fadeUp = {
   initial: { opacity: 0, y: 14 },
@@ -9,6 +9,8 @@ const fadeUp = {
 };
 
 export function Hero() {
+  const { erc8004, chainName, isTestnet } = useActiveChain();
+  const agentId = erc8004.agentId?.toString() ?? "—";
   return (
     <section className="relative pt-20 pb-12 sm:pt-28 sm:pb-16 px-5 sm:px-8">
       <div className="mx-auto max-w-6xl">
@@ -19,12 +21,12 @@ export function Hero() {
         >
           <Tag>
             <ShieldCheck className="size-3.5" />
-            ERC-8004 · Agent #{ERC8004_AGENT_ID?.toString() ?? "274"}
+            ERC-8004 · Agent #{agentId}
           </Tag>
-          <Tag>Celo Sepolia</Tag>
+          <Tag>{chainName}</Tag>
           <Tag>
             <Sparkles className="size-3 text-[var(--color-accent)]" />
-            Live testnet
+            {isTestnet ? "Live testnet" : "Live mainnet"}
           </Tag>
         </motion.div>
 

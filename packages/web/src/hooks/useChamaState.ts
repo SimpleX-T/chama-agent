@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBlockNumber } from "wagmi";
-import { CHAMA_ADDR, CUSD_ADDR, chamaAbi, erc20Abi, publicClient } from "@/lib/chain";
+import { chamaAbi, erc20Abi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 
 export type StaticConfig = {
   contribution: bigint;
@@ -35,13 +36,16 @@ function isPropagationGlitch(err: unknown): boolean {
   );
 }
 
-async function readStaticOnce(addr: `0x${string}`): Promise<StaticConfig> {
+async function readStaticOnce(
+  client: ReturnType<typeof useActiveChain>["publicClient"],
+  addr: `0x${string}`,
+): Promise<StaticConfig> {
   const [contribution, cycleLength, startTime, memberCount, members] = (await Promise.all([
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "contribution" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "cycleLength" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "startTime" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "memberCount" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "members" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "contribution" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "cycleLength" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "startTime" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "memberCount" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "members" }),
   ])) as [bigint, bigint, bigint, bigint, readonly `0x${string}`[]];
 
   // rounds/totalCycles were added in v7. Older chamas (single-rotation) lack
@@ -49,7 +53,7 @@ async function readStaticOnce(addr: `0x${string}`): Promise<StaticConfig> {
   let rounds = 1n;
   let totalCycles = memberCount;
   try {
-    rounds = (await publicClient.readContract({
+    rounds = (await client.readContract({
       address: addr,
       abi: chamaAbi,
       functionName: "rounds",
@@ -67,12 +71,15 @@ async function readStaticOnce(addr: `0x${string}`): Promise<StaticConfig> {
  * new bytecode; viem then returns "0x" / "returned no data". We retry with a
  * gentle backoff (0.5s, 1s, 2s, 4s, 8s — total ~15s) before propagating the error.
  */
-async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
+async function readStatic(
+  client: ReturnType<typeof useActiveChain>["publicClient"],
+  addr: `0x${string}`,
+): Promise<StaticConfig> {
   const backoff = [500, 1000, 2000, 4000, 8000];
   let lastErr: unknown;
   for (let i = 0; i <= backoff.length; i++) {
     try {
-      return await readStaticOnce(addr);
+      return await readStaticOnce(client, addr);
     } catch (e) {
       lastErr = e;
       if (i === backoff.length || !isPropagationGlitch(e)) break;
@@ -82,18 +89,23 @@ async function readStatic(addr: `0x${string}`): Promise<StaticConfig> {
   throw lastErr;
 }
 
-async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<ChamaState> {
+async function readDynamic(
+  client: ReturnType<typeof useActiveChain>["publicClient"],
+  cUSDAddr: `0x${string}`,
+  addr: `0x${string}`,
+  cfg: StaticConfig,
+): Promise<ChamaState> {
   const [currentCycle, currentPayee, cycleDeadline] = (await Promise.all([
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentCycle" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "currentPayee" }),
-    publicClient.readContract({ address: addr, abi: chamaAbi, functionName: "cycleDeadline" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "currentCycle" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "currentPayee" }),
+    client.readContract({ address: addr, abi: chamaAbi, functionName: "cycleDeadline" }),
   ])) as [bigint, `0x${string}`, bigint];
 
   // isCycleActive was added in the v6 bytecode. Older chamas don't expose it;
   // fall back to inferring from the deadline (>0 == something is ticking).
   let isActive: boolean;
   try {
-    isActive = (await publicClient.readContract({
+    isActive = (await client.readContract({
       address: addr,
       abi: chamaAbi,
       functionName: "isCycleActive",
@@ -110,7 +122,7 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
     Promise.all(
       cfg.members.map(
         (m) =>
-          publicClient.readContract({
+          client.readContract({
             address: addr,
             abi: chamaAbi,
             functionName: "contributed",
@@ -121,8 +133,8 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
     Promise.all(
       cfg.members.map(
         (m) =>
-          publicClient.readContract({
-            address: CUSD_ADDR,
+          client.readContract({
+            address: cUSDAddr,
             abi: erc20Abi,
             functionName: "balanceOf",
             args: [m],
@@ -146,7 +158,12 @@ async function readDynamic(addr: `0x${string}`, cfg: StaticConfig): Promise<Cham
   };
 }
 
-export function useChamaState(address: `0x${string}` = CHAMA_ADDR) {
+export function useChamaState(address?: `0x${string}`) {
+  const activeChain = useActiveChain();
+  const watchedAddress = useMemo(
+    () => address ?? activeChain.contracts.Chama ?? null,
+    [address, activeChain.contracts.Chama],
+  );
   const [data, setData] = useState<ChamaState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,25 +176,36 @@ export function useChamaState(address: `0x${string}` = CHAMA_ADDR) {
   // Drive refreshes off chain head — every new block (~5s on Celo).
   const { data: blockNumber } = useBlockNumber({ watch: true });
 
-  // Reset cached static config when the watched address changes
+  // Reset cached static config when the watched address (or chain) changes
   useEffect(() => {
     cfgRef.current = null;
     setData(null);
     setError(null);
     setIsLoading(true);
     setWaitingForDeployment(false);
-  }, [address]);
+  }, [watchedAddress, activeChain.chainId]);
 
   const tick = useCallback(async () => {
+    if (!watchedAddress) {
+      setError("No Chama address available on this network yet.");
+      setIsLoading(false);
+      setWaitingForDeployment(false);
+      return;
+    }
     const myToken = ++refreshTokenRef.current;
     try {
       if (!cfgRef.current) {
         setWaitingForDeployment(true);
-        cfgRef.current = await readStatic(address);
+        cfgRef.current = await readStatic(activeChain.publicClient, watchedAddress);
         if (refreshTokenRef.current !== myToken && !aliveRef.current) return;
         setWaitingForDeployment(false);
       }
-      const s = await readDynamic(address, cfgRef.current);
+      const s = await readDynamic(
+        activeChain.publicClient,
+        activeChain.contracts.cUSD,
+        watchedAddress,
+        cfgRef.current,
+      );
       if (!aliveRef.current) return;
       setData(s);
       setError(null);
@@ -188,7 +216,7 @@ export function useChamaState(address: `0x${string}` = CHAMA_ADDR) {
       setIsLoading(false);
       setWaitingForDeployment(false);
     }
-  }, [address]);
+  }, [watchedAddress, activeChain.chainId, activeChain.publicClient, activeChain.contracts.cUSD]);
 
   useEffect(() => {
     aliveRef.current = true;

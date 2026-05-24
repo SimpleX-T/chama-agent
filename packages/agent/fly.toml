@@ -1,8 +1,14 @@
-# Fly.io configuration for the ChamaAgent cron service.
-# Deploy:
-#   fly launch --copy-config --no-deploy   # one-time setup
-#   fly secrets set DEPLOYER_PRIVATE_KEY=0x...
-#   fly deploy --dockerfile packages/agent/Dockerfile
+# Fly.io config for the ChamaAgent cron service operating Celo mainnet.
+#
+# Deploy from the monorepo root:
+#   fly launch --copy-config --no-deploy           # one-time setup
+#   fly secrets set MAINNET_DEPLOYER_PRIVATE_KEY=0x...   # the agent's signing key
+#   fly deploy --config packages/agent/fly.toml --dockerfile packages/agent/Dockerfile
+#
+# Logs:
+#   fly logs --config packages/agent/fly.toml
+# Restart:
+#   fly apps restart chama-agent
 
 app = "chama-agent"
 primary_region = "iad"
@@ -12,9 +18,12 @@ primary_region = "iad"
 
 [env]
   AGENT_TICK_MS = "15000"
+  # 42220 = Celo mainnet. Set CHAIN_ID=11142220 to point at Sepolia instead.
+  CHAIN_ID = "42220"
+  CELO_RPC = "https://forno.celo.org,https://rpc.ankr.com/celo"
   CELO_SEPOLIA_RPC = "https://forno.celo-sepolia.celo-testnet.org,https://celo-sepolia.drpc.org,https://11142220.rpc.thirdweb.com"
 
-# Always-on, no HTTP service — the agent is a pure background worker.
+# Always-on, no HTTP service — pure background worker
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"
