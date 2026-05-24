@@ -1,0 +1,10 @@
+{
+  "network": "celo",
+  "chainId": "42220",
+  "deployer": "0x",
+  "agent": "0x",
+  "contracts": {
+    "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+  },
+  "note": "Mainnet placeholder. Filled in by deploy-factory:mainnet + deploy-verifier:mainnet + register-agent:mainnet."
+}

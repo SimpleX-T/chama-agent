@@ -6,8 +6,13 @@ import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-verify';
 
-const DEPLOYER = process.env.DEPLOYER_PRIVATE_KEY;
-const accounts = DEPLOYER ? [DEPLOYER] : [];
+const SEPOLIA_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+// Mainnet wallet is a *separate* env var so the testnet key doesn't accidentally
+// sign real-cUSD transactions. Falls back to DEPLOYER_PRIVATE_KEY only if set
+// AND no MAINNET_DEPLOYER_PRIVATE_KEY is configured.
+const MAINNET_KEY = process.env.MAINNET_DEPLOYER_PRIVATE_KEY;
+const sepoliaAccounts = SEPOLIA_KEY ? [SEPOLIA_KEY] : [];
+const mainnetAccounts = MAINNET_KEY ? [MAINNET_KEY] : [];
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -22,12 +27,14 @@ const config: HardhatUserConfig = {
     celoSepolia: {
       url: process.env.CELO_SEPOLIA_RPC ?? 'https://forno.celo-sepolia.celo-testnet.org',
       chainId: Number(process.env.CELO_SEPOLIA_CHAIN_ID ?? 11142220),
-      accounts,
+      accounts: sepoliaAccounts,
     },
     celo: {
-      url: process.env.CELO_RPC ?? 'https://forno.celo.org',
+      // CELO_RPC may be a comma-separated list (for viem fallback); Hardhat
+      // only takes one URL, so we use the first.
+      url: (process.env.CELO_RPC?.split(',')[0] ?? 'https://forno.celo.org').trim(),
       chainId: 42220,
-      accounts,
+      accounts: mainnetAccounts,
     },
   },
   etherscan: {

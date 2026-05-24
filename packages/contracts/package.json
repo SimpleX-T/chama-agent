@@ -17,7 +17,9 @@
     "cycle:sepolia": "hardhat run scripts/cycle.ts --network celoSepolia",
     "verify:sepolia": "hardhat verify --network celoSepolia",
     "gen-wallet": "tsx scripts/gen-wallet.ts",
-    "register-agent": "tsx scripts/register-agent.ts"
+    "register-agent": "tsx scripts/register-agent.ts",
+    "register-agent:sepolia": "CHAIN=sepolia tsx scripts/register-agent.ts",
+    "register-agent:mainnet": "CHAIN=mainnet tsx scripts/register-agent.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

@@ -53,9 +53,24 @@ async function main() {
   console.log(`Computed scope: ${scopeUint.toString()}`);
   console.log(`Config id:      ${configId}`);
 
-  // Update deployment.json
+  // Update deployment.json (bootstrap if missing — same pattern as deploy-factory)
   const file = path.resolve(__dirname, "..", "deployments", `${chainId}.json`);
-  const deployment = JSON.parse(fs.readFileSync(file, "utf-8"));
+  let deployment: any;
+  if (fs.existsSync(file)) {
+    deployment = JSON.parse(fs.readFileSync(file, "utf-8"));
+  } else if (isMainnet) {
+    const cusdMainnet = process.env.CUSD_MAINNET ?? "0x765DE816845861e75A25fCA122bb6898B8B1282a";
+    deployment = {
+      network: name,
+      chainId: chainId.toString(),
+      deployer: deployer.address,
+      agent: deployer.address,
+      contracts: { cUSD: cusdMainnet },
+      deployedAt: new Date().toISOString(),
+    };
+  } else {
+    throw new Error(`No deployment.json for chain ${chainId}; run deploy:sepolia first.`);
+  }
   deployment.contracts.ChamaVerifier = addr;
   deployment.self = {
     hub,

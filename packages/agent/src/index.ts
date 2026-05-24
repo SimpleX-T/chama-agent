@@ -45,22 +45,43 @@ const log = pino({
 const TICK_MS = Number(process.env.AGENT_TICK_MS ?? 15_000);
 const DISCOVER_EVERY_TICKS = 4; // poll factory every ~60s when tick is 15s
 
-const RPC_URLS =
-  process.env.CELO_SEPOLIA_RPC?.split(",").map((s) => s.trim()).filter(Boolean) ?? [
-    "https://forno.celo-sepolia.celo-testnet.org",
-    "https://celo-sepolia.drpc.org",
-    "https://11142220.rpc.thirdweb.com",
-  ];
+// CHAIN_ID picks which deployment.json + RPC set the agent operates on.
+// Defaults to Celo Sepolia for safe local testing; set CHAIN_ID=42220 to
+// operate Celo mainnet contracts (this is what the Fly.io deploy uses).
+const CHAIN_ID = Number(process.env.CHAIN_ID ?? 11142220);
+const IS_MAINNET = CHAIN_ID === 42220;
 
-const celoSepolia = defineChain({
-  id: 11142220,
-  name: "Celo Sepolia",
-  nativeCurrency: { name: "CELO-S", symbol: "CELO-S", decimals: 18 },
-  rpcUrls: { default: { http: RPC_URLS } },
-  blockExplorers: {
-    default: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
-  },
-});
+const RPC_URLS = (
+  IS_MAINNET ? process.env.CELO_RPC : process.env.CELO_SEPOLIA_RPC
+)
+  ?.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean) ??
+  (IS_MAINNET
+    ? ["https://forno.celo.org", "https://rpc.ankr.com/celo"]
+    : [
+        "https://forno.celo-sepolia.celo-testnet.org",
+        "https://celo-sepolia.drpc.org",
+        "https://11142220.rpc.thirdweb.com",
+      ]);
+
+const chain = IS_MAINNET
+  ? defineChain({
+      id: 42220,
+      name: "Celo",
+      nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+      rpcUrls: { default: { http: RPC_URLS } },
+      blockExplorers: { default: { name: "Celoscan", url: "https://celoscan.io" } },
+    })
+  : defineChain({
+      id: 11142220,
+      name: "Celo Sepolia",
+      nativeCurrency: { name: "CELO-S", symbol: "CELO-S", decimals: 18 },
+      rpcUrls: { default: { http: RPC_URLS } },
+      blockExplorers: {
+        default: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
+      },
+    });
 
 const rpcTransport = fallback(
   RPC_URLS.map((u) => http(u, { retryCount: 2, retryDelay: 400 })),
@@ -231,7 +252,7 @@ async function tickChama(
     log.info({ chama: cfg.address, member: m, cycle: currentCycle.toString() }, "→ contributeFor()");
     const hash = await walletClient.writeContract({
       account: walletClient.account!,
-      chain: celoSepolia,
+      chain,
       address: cfg.address,
       abi: chamaAbi,
       functionName: "contributeFor",
@@ -259,7 +280,7 @@ async function tickChama(
     );
     const hash = await walletClient.writeContract({
       account: walletClient.account!,
-      chain: celoSepolia,
+      chain,
       address: cfg.address,
       abi: chamaAbi,
       functionName: "executePayout",
@@ -276,11 +297,25 @@ async function tickChama(
 }
 
 async function main() {
-  const deploymentPath = path.resolve(__dirname, "../../../packages/contracts/deployments/11142220.json");
+  const deploymentPath = path.resolve(
+    __dirname,
+    `../../../packages/contracts/deployments/${CHAIN_ID}.json`,
+  );
+  if (!fs.existsSync(deploymentPath)) {
+    throw new Error(
+      `No deployment file at ${deploymentPath}. Did you deploy on chain ${CHAIN_ID}?`,
+    );
+  }
   const deployment = JSON.parse(fs.readFileSync(deploymentPath, "utf-8"));
 
-  const pk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
-  if (!pk) throw new Error("DEPLOYER_PRIVATE_KEY required (this is the agent's own key)");
+  // Pick the agent's key based on which chain we're operating
+  const pk = (IS_MAINNET
+    ? process.env.MAINNET_DEPLOYER_PRIVATE_KEY
+    : process.env.DEPLOYER_PRIVATE_KEY) as `0x${string}` | undefined;
+  if (!pk)
+    throw new Error(
+      `${IS_MAINNET ? "MAINNET_DEPLOYER_PRIVATE_KEY" : "DEPLOYER_PRIVATE_KEY"} required (the agent's signing key for chain ${CHAIN_ID})`,
+    );
   const account = privateKeyToAccount(pk);
 
   const seedChama = deployment.contracts.Chama
@@ -291,12 +326,14 @@ async function main() {
     : null;
   const cUSDAddr = getAddress(deployment.contracts.cUSD) as `0x${string}`;
 
-  const publicClient = createPublicClient({ chain: celoSepolia, transport: rpcTransport });
-  const walletClient = createWalletClient({ account, chain: celoSepolia, transport: rpcTransport });
+  const publicClient = createPublicClient({ chain, transport: rpcTransport });
+  const walletClient = createWalletClient({ account, chain, transport: rpcTransport });
 
   log.info(
     {
       agent: account.address,
+      chainId: CHAIN_ID,
+      network: chain.name,
       seedChama,
       factory: factoryAddr,
       cUSD: cUSDAddr,
