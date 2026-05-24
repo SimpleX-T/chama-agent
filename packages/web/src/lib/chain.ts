@@ -1,43 +1,193 @@
 import { createPublicClient, defineChain, fallback, http, parseAbi } from "viem";
-import deployment from "../../../contracts/deployments/11142220.json";
+import sepoliaDeployment from "../../../contracts/deployments/11142220.json";
+import mainnetDeployment from "../../../contracts/deployments/42220.json";
 
-export const RPC_URLS = [
+// -----------------------------------------------------------------------------
+// Chain configs
+// -----------------------------------------------------------------------------
+
+export const SEPOLIA_RPC_URLS = [
   "https://forno.celo-sepolia.celo-testnet.org",
   "https://celo-sepolia.drpc.org",
   "https://11142220.rpc.thirdweb.com",
+];
+
+export const MAINNET_RPC_URLS = [
+  "https://forno.celo.org",
+  "https://rpc.ankr.com/celo",
 ];
 
 export const celoSepolia = defineChain({
   id: 11142220,
   name: "Celo Sepolia",
   nativeCurrency: { name: "CELO-S", symbol: "CELO-S", decimals: 18 },
-  rpcUrls: { default: { http: RPC_URLS } },
+  rpcUrls: { default: { http: SEPOLIA_RPC_URLS } },
   blockExplorers: {
     default: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
   },
   testnet: true,
 });
 
-export const publicClient = createPublicClient({
-  chain: celoSepolia,
-  transport: fallback(
-    RPC_URLS.map((u) => http(u, { retryCount: 2, retryDelay: 400 })),
-    { rank: false },
-  ),
+export const celoMainnet = defineChain({
+  id: 42220,
+  name: "Celo",
+  nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+  rpcUrls: { default: { http: MAINNET_RPC_URLS } },
+  blockExplorers: {
+    default: { name: "Celoscan", url: "https://celoscan.io" },
+  },
 });
 
-export const CHAMA_ADDR = deployment.contracts.Chama as `0x${string}`;
-export const CUSD_ADDR = deployment.contracts.cUSD as `0x${string}`;
-export const CHAMA_FACTORY_ADDR =
-  ((deployment as any).contracts?.ChamaFactory as `0x${string}` | undefined) ?? null;
-export const AGENT_ADDR = deployment.agent as `0x${string}`;
-export const DEPLOY_MEMBERS = deployment.members as `0x${string}`[];
-export const ERC8004_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e" as `0x${string}`;
-/** Reputation Registry on Celo Sepolia (members attest to the agent's performance). */
-export const ERC8004_REPUTATION = "0x8004B663056A597Dffe9eCcC1965A193B7388713" as `0x${string}`;
-export const ERC8004_AGENT_ID = (deployment as any).erc8004?.agentId
-  ? BigInt((deployment as any).erc8004.agentId)
-  : 274n;
+// -----------------------------------------------------------------------------
+// Per-chain deployment registry
+// -----------------------------------------------------------------------------
+
+export type SupportedChainId = 42220 | 11142220;
+
+export const DEFAULT_CHAIN_ID: SupportedChainId = 42220;
+
+type ChainConfig = {
+  chainId: SupportedChainId;
+  chainName: string;
+  shortName: string;
+  isTestnet: boolean;
+  explorer: string;
+  rpcUrls: string[];
+  contracts: {
+    Chama: `0x${string}` | null;
+    ChamaFactory: `0x${string}` | null;
+    ChamaVerifier: `0x${string}` | null;
+    cUSD: `0x${string}`;
+  };
+  deployMembers: `0x${string}`[];
+  agentAddress: `0x${string}` | null;
+  erc8004: {
+    identityRegistry: `0x${string}`;
+    reputationRegistry: `0x${string}`;
+    agentId: bigint | null;
+    /** Slug used in 8004scan.io URLs */
+    scanSlug: string;
+  };
+  self: {
+    hub: `0x${string}`;
+    /** "celo" for prod proofs, "staging_celo" for mock-passport dev */
+    endpointType: "celo" | "staging_celo";
+  };
+  cUSDSymbol: string;
+};
+
+const asAddr = (x: unknown): `0x${string}` | null =>
+  typeof x === "string" && /^0x[0-9a-fA-F]{40}$/.test(x) ? (x as `0x${string}`) : null;
+
+const CHAIN_REGISTRY: Record<SupportedChainId, ChainConfig> = {
+  42220: {
+    chainId: 42220,
+    chainName: "Celo",
+    shortName: "Mainnet",
+    isTestnet: false,
+    explorer: "https://celoscan.io",
+    rpcUrls: MAINNET_RPC_URLS,
+    contracts: {
+      Chama: asAddr((mainnetDeployment as any).contracts?.Chama),
+      ChamaFactory: asAddr((mainnetDeployment as any).contracts?.ChamaFactory),
+      ChamaVerifier: asAddr((mainnetDeployment as any).contracts?.ChamaVerifier),
+      cUSD: ((mainnetDeployment as any).contracts?.cUSD as `0x${string}`) ??
+        ("0x765DE816845861e75A25fCA122bb6898B8B1282a" as `0x${string}`),
+    },
+    deployMembers: ((mainnetDeployment as any).members ?? []) as `0x${string}`[],
+    agentAddress: asAddr((mainnetDeployment as any).agent),
+    erc8004: {
+      identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as `0x${string}`,
+      reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as `0x${string}`,
+      agentId: (mainnetDeployment as any).erc8004?.agentId
+        ? BigInt((mainnetDeployment as any).erc8004.agentId)
+        : null,
+      scanSlug: "celo",
+    },
+    self: {
+      hub: "0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF" as `0x${string}`,
+      endpointType: "celo",
+    },
+    cUSDSymbol: "cUSD",
+  },
+  11142220: {
+    chainId: 11142220,
+    chainName: "Celo Sepolia",
+    shortName: "Sepolia",
+    isTestnet: true,
+    explorer: "https://celo-sepolia.blockscout.com",
+    rpcUrls: SEPOLIA_RPC_URLS,
+    contracts: {
+      Chama: asAddr((sepoliaDeployment as any).contracts?.Chama),
+      ChamaFactory: asAddr((sepoliaDeployment as any).contracts?.ChamaFactory),
+      ChamaVerifier: asAddr((sepoliaDeployment as any).contracts?.ChamaVerifier),
+      cUSD: ((sepoliaDeployment as any).contracts?.cUSD as `0x${string}`) ??
+        ("0x0000000000000000000000000000000000000000" as `0x${string}`),
+    },
+    deployMembers: ((sepoliaDeployment as any).members ?? []) as `0x${string}`[],
+    agentAddress: asAddr((sepoliaDeployment as any).agent),
+    erc8004: {
+      identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e" as `0x${string}`,
+      reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713" as `0x${string}`,
+      agentId: (sepoliaDeployment as any).erc8004?.agentId
+        ? BigInt((sepoliaDeployment as any).erc8004.agentId)
+        : 274n,
+      scanSlug: "celo-sepolia",
+    },
+    self: {
+      hub: "0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74" as `0x${string}`,
+      endpointType: "staging_celo",
+    },
+    cUSDSymbol: "mcUSD",
+  },
+};
+
+export function getChainConfig(chainId: number): ChainConfig {
+  return CHAIN_REGISTRY[chainId as SupportedChainId] ?? CHAIN_REGISTRY[DEFAULT_CHAIN_ID];
+}
+
+export const SUPPORTED_CHAINS = [celoMainnet, celoSepolia] as const;
+
+// -----------------------------------------------------------------------------
+// Public client cache (one per chain)
+// -----------------------------------------------------------------------------
+
+const publicClients = new Map<SupportedChainId, ReturnType<typeof createPublicClient>>();
+export function getPublicClient(chainId: number) {
+  const id = (chainId === 42220 ? 42220 : 11142220) as SupportedChainId;
+  if (!publicClients.has(id)) {
+    const cfg = CHAIN_REGISTRY[id];
+    const chain = id === 42220 ? celoMainnet : celoSepolia;
+    publicClients.set(
+      id,
+      createPublicClient({
+        chain,
+        transport: fallback(
+          cfg.rpcUrls.map((u) => http(u, { retryCount: 2, retryDelay: 400 })),
+          { rank: false },
+        ),
+      }),
+    );
+  }
+  return publicClients.get(id)!;
+}
+
+// Default (mainnet) — kept for components that haven't been threaded with
+// useActiveChain yet. New code should call getChainConfig(chainId) instead.
+export const publicClient = getPublicClient(DEFAULT_CHAIN_ID);
+const defaultCfg = CHAIN_REGISTRY[DEFAULT_CHAIN_ID];
+export const CHAMA_ADDR = defaultCfg.contracts.Chama ?? ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+export const CUSD_ADDR = defaultCfg.contracts.cUSD;
+export const CHAMA_FACTORY_ADDR = defaultCfg.contracts.ChamaFactory;
+export const AGENT_ADDR = defaultCfg.agentAddress ?? ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+export const DEPLOY_MEMBERS = defaultCfg.deployMembers;
+export const ERC8004_REGISTRY = defaultCfg.erc8004.identityRegistry;
+export const ERC8004_REPUTATION = defaultCfg.erc8004.reputationRegistry;
+export const ERC8004_AGENT_ID = defaultCfg.erc8004.agentId ?? 9146n;
+
+// -----------------------------------------------------------------------------
+// ABIs
+// -----------------------------------------------------------------------------
 
 export const chamaAbi = parseAbi([
   "function contribution() view returns (uint256)",

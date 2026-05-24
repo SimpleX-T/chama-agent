@@ -4,7 +4,28 @@
   "deployer": "0x",
   "agent": "0x",
   "contracts": {
-    "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+    "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+    "ChamaFactory": "0x8cA82b18093880524f9EAbEf1bEFE5B864032918",
+    "ChamaVerifier": "0x90D6641808b8Ff80DF43269ad094491AA4383B67"
   },
-  "note": "Mainnet placeholder. Filled in by deploy-factory:mainnet + deploy-verifier:mainnet + register-agent:mainnet."
+  "note": "Mainnet placeholder. Filled in by deploy-factory:mainnet + deploy-verifier:mainnet + register-agent:mainnet.",
+  "factoryDeployedAt": "2026-05-24T22:17:10.167Z",
+  "self": {
+    "hub": "0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF",
+    "scopeSeed": "chamaagent",
+    "scope": "17727126487844879349013167851979154798403117813181839415897988477239810102911",
+    "configId": "0x76dde44ad08950385c0a76f3f372f863fc83e28a1a0e0ac47ecfeee6cbaf50a7",
+    "config": {
+      "olderThan": "0",
+      "forbiddenCountries": [],
+      "ofacEnabled": true
+    },
+    "deployedAt": "2026-05-24T22:18:50.879Z"
+  },
+  "erc8004": {
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "agentId": "9146",
+    "agentURI": "https://raw.githubusercontent.com/SimpleX-T/chama-agent/main/packages/contracts/agent-card.json",
+    "txHash": "0x15aa52c40768367a5e36b9c9475ef8532dd9b814731a7654e1de54b5608ce6a4"
+  }
 }

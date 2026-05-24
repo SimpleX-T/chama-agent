@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { NetworkBadge } from "@/components/NetworkBadge";
 
 const nav = [
   { to: "/", label: "Overview" },
@@ -46,7 +47,10 @@ export function Shell() {
               );
             })}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden sm:block">
+              <NetworkBadge />
+            </div>
             <ConnectButton
               chainStatus={{ smallScreen: "icon", largeScreen: "icon" }}
               accountStatus={{ smallScreen: "avatar", largeScreen: "full" }}

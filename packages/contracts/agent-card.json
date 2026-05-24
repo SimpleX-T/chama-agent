@@ -14,28 +14,41 @@
   ],
   "registrations": [
     {
+      "agentId": 9146,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    },
+    {
       "agentId": 274,
       "agentRegistry": "eip155:11142220:0x8004A818BFB912233c491871b3d84c89A494BD9e"
     }
   ],
-  "version": "0.1.0",
-  "owner": "0x7E65877b560Db3863baB4BC32F60e3c6693a9B06",
+  "version": "0.2.0",
+  "owner": "0x60347C5337480460B7E274A3C05eBE445ec0b0b9",
   "capabilities": [
     "rosca-management",
     "stablecoin-escrow",
     "scheduled-payouts",
-    "self-id-verification"
+    "self-id-verification",
+    "reputation-attestations"
   ],
-  "chains": ["celo-sepolia"],
+  "chains": ["celo", "celo-sepolia"],
   "contracts": {
+    "42220": {
+      "ChamaFactory": "0x8cA82b18093880524f9EAbEf1bEFE5B864032918",
+      "ChamaVerifier": "0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4",
+      "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+    },
     "11142220": {
-      "Chama": "0xe68552774266A758c92A24Bb13F289d9360276aC",
-      "MockCUSD": "0x3A38E894A31d716AdA6Fd6ECc0Ff2344BD08D638"
+      "ChamaFactory": "0x0c2819cdDF09eCE1Fa4a0C4Cb42872Fb6D4306Cd",
+      "ChamaVerifier": "0xeA64FD5169B067b9dcfe6D318858cBc712953e62",
+      "MockCUSD": "0x6798E399dd1862AfF50A8e9B906f09ccEfF76AC0"
     }
   },
   "links": {
     "source": "https://github.com/SimpleX-T/chama-agent",
-    "readme": "https://github.com/SimpleX-T/chama-agent#readme"
+    "readme": "https://github.com/SimpleX-T/chama-agent#readme",
+    "8004scan-mainnet": "https://8004scan.io/agents/celo/9146",
+    "8004scan-sepolia": "https://8004scan.io/agents/celo-sepolia/274"
   },
-  "tags": ["celo", "rosca", "chama", "savings", "minipay", "stablecoin"]
+  "tags": ["celo", "rosca", "chama", "savings", "minipay", "self-id", "stablecoin", "merry-go-round"]
 }
