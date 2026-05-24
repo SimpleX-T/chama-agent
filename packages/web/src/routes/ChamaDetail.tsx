@@ -7,6 +7,7 @@ import { CountdownRing } from "@/components/CountdownRing";
 import { CycleActions } from "@/components/CycleActions";
 import { MemberActions } from "@/components/MemberActions";
 import { MemberCard } from "@/components/MemberCard";
+import { RateAgentCard } from "@/components/RateAgentCard";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
 import { Stat } from "@/components/Stat";
 import { useChamaActivity } from "@/hooks/useChamaActivity";
@@ -181,6 +182,18 @@ export function ChamaDetail() {
             chamaAddress={address}
             contribution={data.contribution}
             currentCycle={data.currentCycle}
+          />
+        </section>
+      )}
+
+      {/* Reputation attestation panel — appears as soon as one cycle has paid out */}
+      {data && data.currentCycle > 0n && (
+        <section>
+          <SectionHead title="Reputation" hint="On-chain attestation · ERC-8004" />
+          <RateAgentCard
+            chamaAddress={address}
+            currentCycle={data.currentCycle}
+            lastPaidCycle={data.currentCycle - 1n}
           />
         </section>
       )}

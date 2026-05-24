@@ -212,6 +212,44 @@ async function main() {
     }
   }
 
+  // Phase 4: post one ERC-8004 reputation attestation per env-wallet member
+  // against the agent. The Reputation Registry blocks self-feedback so the
+  // agent (deployer) can't farm itself, but each member can attest once per
+  // call — net effect: +N on-chain tx per cycle that move our 8004scan rank.
+  const REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713";
+  const AGENT_ID = 274n;
+  const reputationAbi = [
+    "function giveFeedback(uint256 agentId, int128 value, uint8 valueDecimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash)",
+  ];
+
+  console.log("\n--- Phase 4: ERC-8004 reputation attestations ---");
+  const cycleNow = (await chama.currentCycle()) as bigint;
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i];
+    const envWallet = envByAddr[member.toLowerCase()];
+    if (!envWallet) {
+      console.log(`  MEMBER ${i + 1}: skipped (no env key — owner attests from the dashboard)`);
+      continue;
+    }
+    try {
+      const registry = new ethers.Contract(REPUTATION_REGISTRY, reputationAbi, envWallet);
+      const tx = await registry.giveFeedback(
+        AGENT_ID,
+        100, // perfect score for this cycle
+        0,
+        "rosca-cycle",
+        `cycle-${cycleNow.toString()}`,
+        `https://celo-sepolia.blockscout.com/address/${chamaAddr}`,
+        "",
+        ethers.ZeroHash,
+      );
+      const r = await tx.wait();
+      console.log(`  MEMBER ${i + 1}: attested agent #${AGENT_ID} (cycle ${cycleNow}) — ${r!.hash}`);
+    } catch (e: any) {
+      console.log(`  MEMBER ${i + 1}: attestation failed — ${e?.shortMessage ?? e?.message?.split("\n")[0]}`);
+    }
+  }
+
   const after = (await chama.currentCycle()) as bigint;
   console.log(`\nDone. Cycle is now: ${after}/${memberCount}`);
 }

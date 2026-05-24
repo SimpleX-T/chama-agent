@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowUpRight, Coins, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { ERC8004_AGENT_ID } from "@/lib/chain";
 
 const fadeUp = {
@@ -34,7 +34,10 @@ export function Hero() {
           className="mt-8 max-w-4xl text-balance text-5xl sm:text-7xl font-semibold tracking-[-0.03em] leading-[0.95]"
         >
           The treasurer{" "}
-          <span className="italic font-medium text-[var(--color-accent)]" style={{ fontFamily: "var(--font-serif)" }}>
+          <span
+            className="italic font-medium text-[var(--color-accent)]"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
             is a contract.
           </span>
         </motion.h1>
@@ -44,14 +47,50 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="mt-7 max-w-2xl text-balance text-[var(--color-fg-muted)] text-lg sm:text-xl leading-relaxed"
         >
-          ChamaAgent runs trustless rotating savings groups on Celo. Members pool cUSD on a schedule;
-          the full pot rotates to each member in turn. An ERC-8004 agent operates the workflow{" "}
-          <span className="text-[var(--color-fg)]">and never touches your money.</span>
+          Daily merry-go-rounds for boda riders, mama mboga circles, and weekly chamas — same
+          mechanic, run on Celo. Every member's history accrues to a{" "}
+          <span className="text-[var(--color-fg)]">portable on-chain reputation</span>. Idle pots
+          earn yield while waiting for their turn. The agent runs the rotation; the contract
+          enforces every rule.
         </motion.p>
 
         <motion.div
           {...fadeUp}
-          transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, delay: 0.13, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-sm"
+        >
+          <Pillar
+            icon={<Coins className="size-4" />}
+            text={
+              <>
+                <span className="text-[var(--color-fg)] font-medium">Yield while idle</span> · the
+                pot earns until payout
+              </>
+            }
+          />
+          <Pillar
+            icon={<TrendingUp className="size-4" />}
+            text={
+              <>
+                <span className="text-[var(--color-fg)] font-medium">Portable reputation</span> ·
+                ERC-8004 attestations every cycle
+              </>
+            }
+          />
+          <Pillar
+            icon={<ShieldCheck className="size-4" />}
+            text={
+              <>
+                <span className="text-[var(--color-fg)] font-medium">Fraud-proof escrow</span> ·
+                agent can't drain the pot
+              </>
+            }
+          />
+        </motion.div>
+
+        <motion.div
+          {...fadeUp}
+          transition={{ duration: 0.6, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
           className="mt-10 flex flex-wrap items-center gap-3"
         >
           <Link
@@ -65,7 +104,7 @@ export function Hero() {
             to="/create"
             className="group inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--color-fg)] hover:bg-white/[0.06] transition"
           >
-            Start a chama
+            Start a merry-go-round
             <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
           <a
@@ -79,6 +118,15 @@ export function Hero() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+function Pillar({ icon, text }: { icon: React.ReactNode; text: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-start gap-2 text-[var(--color-fg-muted)]">
+      <span className="text-[var(--color-accent)] mt-0.5">{icon}</span>
+      <span className="leading-snug">{text}</span>
+    </span>
   );
 }
 

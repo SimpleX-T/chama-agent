@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Plus, ShieldAlert, Sparkles, UserPlus, X } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Sailboat, ShieldAlert, Sparkles, Sun, UserPlus, X, Zap } from "lucide-react";
 import { decodeEventLog, isAddress, parseUnits } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -27,6 +27,65 @@ const openTimeoutPresets: Preset[] = [
 
 const roundPresets = [1, 2, 3, 5, 10];
 
+type Template = {
+  id: string;
+  label: string;
+  hint: string;
+  icon: React.ComponentType<{ className?: string }>;
+  cycleSeconds: number;
+  openTimeoutSeconds: number;
+  rounds: number;
+  contribution: string;
+  memberCount: number; // how many empty rows to start with
+};
+
+const templates: Template[] = [
+  {
+    id: "demo",
+    label: "Demo (live recording)",
+    hint: "5-min active phase · 2-min force-advance · 3 members · 1 round — fits inside a 90-second demo video.",
+    icon: Zap,
+    cycleSeconds: 5 * 60,
+    openTimeoutSeconds: 2 * 60,
+    rounds: 1,
+    contribution: "1",
+    memberCount: 3,
+  },
+  {
+    id: "merry-go-round",
+    label: "Daily merry-go-round",
+    hint: "10 members · 50 KES/day · 24-hour cycles · 30 rounds. Native to boda riders, market women, mama mbogas — the highest-frequency real ROSCA pattern.",
+    icon: Sun,
+    cycleSeconds: 24 * 60 * 60,
+    openTimeoutSeconds: 24 * 60 * 60,
+    rounds: 30,
+    contribution: "0.5",
+    memberCount: 10,
+  },
+  {
+    id: "weekly",
+    label: "Weekly chama",
+    hint: "5 members · 20 cUSD/week · 7-day cycles · 12 rounds (≈3 months). Classic small-group cadence.",
+    icon: CalendarClock,
+    cycleSeconds: 7 * 24 * 60 * 60,
+    openTimeoutSeconds: 7 * 24 * 60 * 60,
+    rounds: 12,
+    contribution: "20",
+    memberCount: 5,
+  },
+  {
+    id: "monthly",
+    label: "Monthly chama",
+    hint: "12 members · 100 cUSD/month · 30-day cycles · 1 round. The traditional rent-deposit / school-fees chama.",
+    icon: Sailboat,
+    cycleSeconds: 30 * 24 * 60 * 60,
+    openTimeoutSeconds: 30 * 24 * 60 * 60,
+    rounds: 1,
+    contribution: "100",
+    memberCount: 12,
+  },
+];
+
 export function CreateChamaForm() {
   const navigate = useNavigate();
   const { address: connected } = useAccount();
@@ -35,6 +94,22 @@ export function CreateChamaForm() {
   const [cycleSeconds, setCycleSeconds] = useState(cycleLengthPresets[0].seconds);
   const [openTimeoutSeconds, setOpenTimeoutSeconds] = useState(openTimeoutPresets[0].seconds);
   const [rounds, setRounds] = useState(1);
+  const [appliedTemplate, setAppliedTemplate] = useState<string | null>("demo");
+
+  function applyTemplate(t: Template) {
+    setAppliedTemplate(t.id);
+    setCycleSeconds(t.cycleSeconds);
+    setOpenTimeoutSeconds(t.openTimeoutSeconds);
+    setRounds(t.rounds);
+    setContribution(t.contribution);
+    setMembers((prev) => {
+      // Keep whatever's already typed; pad with empties up to t.memberCount.
+      const filled = prev.filter((m) => m.trim());
+      const padding = Math.max(0, t.memberCount - filled.length);
+      const next = [...filled, ...Array(padding).fill("")];
+      return next.slice(0, 10);
+    });
+  }
 
   const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
   const { isLoading: isMining, isSuccess, data: receipt, error: waitError } = useWaitForTransactionReceipt({ hash: txHash });
@@ -134,6 +209,53 @@ export function CreateChamaForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      <section className="surface p-6 sm:p-7 space-y-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">Templates</h2>
+          <span className="text-[10px] uppercase tracking-wider text-[var(--color-fg-subtle)]">
+            One click. Edit anything below.
+          </span>
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {templates.map((t) => {
+            const active = appliedTemplate === t.id;
+            const Icon = t.icon;
+            return (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => applyTemplate(t)}
+                className={cn(
+                  "text-left rounded-xl border p-4 transition flex items-start gap-3",
+                  active
+                    ? "border-[var(--color-accent)]/55 bg-[var(--color-accent-soft)]"
+                    : "border-[var(--color-border)] bg-white/[0.02] hover:bg-white/[0.04]",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-9 place-items-center rounded-lg shrink-0",
+                    active
+                      ? "bg-[var(--color-accent)] text-[#09090b]"
+                      : "bg-white/[0.04] text-[var(--color-fg-muted)]",
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-sm font-semibold", active && "text-[var(--color-accent)]")}>
+                      {t.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--color-fg-muted)] leading-snug">{t.hint}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="surface p-6 sm:p-8 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold tracking-tight">Members</h2>

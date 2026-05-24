@@ -33,6 +33,8 @@ export const CHAMA_FACTORY_ADDR =
 export const AGENT_ADDR = deployment.agent as `0x${string}`;
 export const DEPLOY_MEMBERS = deployment.members as `0x${string}`[];
 export const ERC8004_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e" as `0x${string}`;
+/** Reputation Registry on Celo Sepolia (members attest to the agent's performance). */
+export const ERC8004_REPUTATION = "0x8004B663056A597Dffe9eCcC1965A193B7388713" as `0x${string}`;
 export const ERC8004_AGENT_ID = (deployment as any).erc8004?.agentId
   ? BigInt((deployment as any).erc8004.agentId)
   : 274n;
@@ -77,6 +79,12 @@ export const erc20Abi = parseAbi(erc20Signatures);
 export const mockCUSDAbi = parseAbi([
   ...erc20Signatures,
   "function mint(address to, uint256 amount)",
+]);
+
+export const reputationRegistryAbi = parseAbi([
+  "function giveFeedback(uint256 agentId, int128 value, uint8 valueDecimals, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash)",
+  "function getLastIndex(uint256 agentId, address clientAddress) view returns (uint64)",
+  "event NewFeedback(uint256 indexed agentId, address indexed clientAddress, uint64 indexed index, int128 value, uint8 valueDecimals, string tag1, string tag2)",
 ]);
 
 export const chamaFactoryAbi = parseAbi([
