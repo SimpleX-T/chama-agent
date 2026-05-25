@@ -9,6 +9,7 @@ import { MemberActions } from "@/components/MemberActions";
 import { MemberCard } from "@/components/MemberCard";
 import { RateAgentCard } from "@/components/RateAgentCard";
 import { RotationVisualizer } from "@/components/RotationVisualizer";
+import { ShareInviteButton } from "@/components/ShareInviteButton";
 import { Stat } from "@/components/Stat";
 import { useChamaActivity } from "@/hooks/useChamaActivity";
 import { useChamaState } from "@/hooks/useChamaState";
@@ -53,15 +54,18 @@ export function ChamaDetail() {
           <h1 className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight">
             {data?.completed ? "Rotation complete" : "Live rotation"}
           </h1>
-          <a
-            href={explorer(address)}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
-          >
-            {address}
-            <ExternalLink className="size-3.5" />
-          </a>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <a
+              href={explorer(address)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+            >
+              {address}
+              <ExternalLink className="size-3.5" />
+            </a>
+            {address && <ShareInviteButton address={address} />}
+          </div>
         </div>
         {data && !data.completed && data.isActive && (
           <CountdownRing deadline={data.cycleDeadline} total={data.cycleLength} size={76} />
