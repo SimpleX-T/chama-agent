@@ -18,7 +18,7 @@ import { explorer, formatUnits, shortAddr } from "@/lib/format";
 
 export function ChamaDetail() {
   const { address: paramAddress } = useParams<{ address: string }>();
-  const { contracts, agentAddress } = useActiveChain();
+  const { contracts, agentAddress, cUSDSymbol } = useActiveChain();
   // "featured" → newest factory chama if present, else the seed Chama if any, else null
   const address = (paramAddress && paramAddress !== "featured"
     ? (paramAddress as `0x${string}`)
@@ -105,6 +105,7 @@ export function ChamaDetail() {
               completed={data.completed}
               rounds={data.rounds}
               totalCycles={data.totalCycles}
+              symbol={cUSDSymbol}
               size={520}
             />
           ) : (
@@ -132,12 +133,12 @@ export function ChamaDetail() {
           <Stat
             label="Pot this cycle"
             value={data ? formatUnits(data.potThisCycle) : "—"}
-            hint="mcUSD"
+            hint={cUSDSymbol}
           />
           <Stat
             label="Contribution"
             value={data ? formatUnits(data.contribution) : "—"}
-            hint="mcUSD per member per cycle"
+            hint={`${cUSDSymbol} per member per cycle`}
           />
           <Stat
             label="Cycle length"
@@ -257,7 +258,7 @@ export function ChamaDetail() {
         <SectionHead title="Contracts" />
         <div className="surface divide-y divide-[var(--color-border)]/60">
           <AddrRow label="Chama" addr={address} />
-          <AddrRow label="cUSD" addr={contracts.cUSD} />
+          <AddrRow label={cUSDSymbol} addr={contracts.cUSD} />
           {agentAddress && <AddrRow label="Agent wallet" addr={agentAddress} />}
         </div>
       </section>

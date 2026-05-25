@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Banknote, CircleDashed, Clock, Loader2, Sparkles, Users, Zap } from "lucide-react";
 import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { chamaAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { cn } from "@/lib/cn";
 import { formatUnits, shortAddr } from "@/lib/format";
 
@@ -37,6 +38,7 @@ export function CycleActions({
   completed,
   onRefresh,
 }: Props) {
+  const { cUSDSymbol: symbol } = useActiveChain();
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
@@ -115,7 +117,7 @@ export function CycleActions({
               <>
                 Every member has paid in. The pot of{" "}
                 <span className="text-[var(--color-fg)] font-medium">
-                  {formatUnits(potThisCycle)} mcUSD
+                  {formatUnits(potThisCycle)} {symbol}
                 </span>{" "}
                 is locked and will land in{" "}
                 <span className="text-[var(--color-fg)] font-medium">MEMBER {payeeIndex + 1}</span> (
@@ -127,7 +129,7 @@ export function CycleActions({
               <>
                 Timer elapsed. Click below — or wait for the next on-chain interaction — to deliver{" "}
                 <span className="text-[var(--color-fg)] font-medium">
-                  {formatUnits(potThisCycle)} mcUSD
+                  {formatUnits(potThisCycle)} {symbol}
                 </span>{" "}
                 to <span className="text-[var(--color-fg)] font-medium">MEMBER {payeeIndex + 1}</span>{" "}
                 and roll the chama into cycle {(currentCycle + 1n).toString()}.

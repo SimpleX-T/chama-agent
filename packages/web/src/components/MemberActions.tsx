@@ -26,7 +26,7 @@ type Props = {
  * Self-serve panel for the connected wallet:
  *  - If not connected → "connect wallet" prompt
  *  - If connected but not a member → status badge
- *  - If member, no balance → mint test mcUSD
+ *  - If member, no balance → mint test mcUSD (Sepolia) or link to Mento (mainnet)
  *  - If member, balance, no allowance → approve the chama
  *  - If member, balance + allowance → ready (agent will operate)
  */
@@ -112,7 +112,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
       <PanelShell
         icon={<Sparkles className="size-5" />}
         title="Connect to participate"
-        body="Connect a wallet that's a member of this chama to fund yourself with test mcUSD and authorize the contract."
+        body={`Connect a wallet that's a member of this chama to fund yourself with ${cUSDSymbol} and authorize the contract.`}
       >
         <div className="rk-only">
           <ConnectButton label="Connect wallet" showBalance={false} accountStatus="address" />
@@ -178,10 +178,12 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
       }
       body={
         ready
-          ? `You've contributed ${formatUnits(contribution)} mcUSD for cycle ${currentCycle.toString()}. Sit back — the payout will reach the next member in line once everyone's in (or the deadline elapses).`
+          ? `You've contributed ${formatUnits(contribution)} ${cUSDSymbol} for cycle ${currentCycle.toString()}. Sit back — the payout will reach the next member in line once everyone's in (or the deadline elapses).`
           : canPay
-            ? `Balance and approval are in place. Pay in ${formatUnits(contribution)} mcUSD to commit your share of this cycle's pot.`
-            : "Three steps: mint test mcUSD, approve the chama contract, then contribute. Real cUSD on mainnet."
+            ? `Balance and approval are in place. Pay in ${formatUnits(contribution)} ${cUSDSymbol} to commit your share of this cycle's pot.`
+            : isTestnet
+              ? `Three steps: mint test ${cUSDSymbol}, approve the chama contract, then contribute. Real cUSD on mainnet.`
+              : `Three steps: pick up cUSD from Mento, approve the chama contract, then contribute.`
       }
     >
       {verified && (
@@ -195,10 +197,17 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
           step={1}
           title="Fund"
           done={!needFromFaucet}
-          value={`${formatUnits(bal)} mcUSD`}
-          actionLabel={needFromFaucet ? "Mint test mcUSD" : "Funded"}
+          value={`${formatUnits(bal)} ${cUSDSymbol}`}
+          actionLabel={
+            !needFromFaucet
+              ? "Funded"
+              : isTestnet
+                ? "Mint test mcUSD"
+                : "Get cUSD on Mento"
+          }
           loading={mintPending || mintMining}
-          onClick={onMint}
+          onClick={isTestnet ? onMint : undefined}
+          href={!isTestnet && needFromFaucet ? "https://app.mento.org/cusd" : undefined}
         />
         <StepCard
           step={2}
@@ -208,7 +217,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
             allow > 10n ** 30n
               ? "Unlimited"
               : allow > 0n
-                ? `${formatUnits(allow)} mcUSD`
+                ? `${formatUnits(allow)} ${cUSDSymbol}`
                 : "Not approved"
           }
           actionLabel={needApprove ? "Approve chama" : "Approved"}
@@ -220,7 +229,7 @@ export function MemberActions({ chamaAddress, contribution, currentCycle }: Prop
           step={3}
           title={`Cycle ${currentCycle.toString()}`}
           done={hasPaid}
-          value={hasPaid ? "Paid in" : `${formatUnits(contribution)} mcUSD due`}
+          value={hasPaid ? "Paid in" : `${formatUnits(contribution)} ${cUSDSymbol} due`}
           actionLabel={hasPaid ? "Paid" : "Pay in now"}
           loading={payPending || payMining}
           onClick={onPay}
@@ -276,6 +285,7 @@ function StepCard({
   actionLabel,
   loading,
   onClick,
+  href,
   disabled,
 }: {
   step: number;
@@ -284,9 +294,17 @@ function StepCard({
   value: string;
   actionLabel: string;
   loading: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  /** If provided, the action becomes an external link (e.g. Mento) instead of a tx button. */
+  href?: string;
   disabled?: boolean;
 }) {
+  const interactiveClasses = cn(
+    "mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md text-xs font-semibold py-2 transition",
+    disabled
+      ? "bg-white/[0.04] text-[var(--color-fg-subtle)] cursor-not-allowed"
+      : "bg-[var(--color-accent)] text-[#09090b] hover:brightness-110 disabled:opacity-60",
+  );
   return (
     <div
       className={cn(
@@ -309,22 +327,27 @@ function StepCard({
       </div>
       <div className="mt-2 text-base font-semibold">{title}</div>
       <div className="mt-0.5 text-xs nums text-[var(--color-fg-muted)]">{value}</div>
-      {!done && (
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={disabled || loading}
-          className={cn(
-            "mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md text-xs font-semibold py-2 transition",
-            disabled
-              ? "bg-white/[0.04] text-[var(--color-fg-subtle)] cursor-not-allowed"
-              : "bg-[var(--color-accent)] text-[#09090b] hover:brightness-110 disabled:opacity-60",
-          )}
-        >
-          {loading && <Loader2 className="size-3.5 animate-spin" />}
-          {actionLabel}
-        </button>
-      )}
+      {!done &&
+        (href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className={interactiveClasses}
+          >
+            {actionLabel} ↗
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled || loading || !onClick}
+            className={interactiveClasses}
+          >
+            {loading && <Loader2 className="size-3.5 animate-spin" />}
+            {actionLabel}
+          </button>
+        ))}
     </div>
   );
 }

@@ -90,7 +90,7 @@ const templates: Template[] = [
 export function CreateChamaForm() {
   const navigate = useNavigate();
   const { address: connected } = useAccount();
-  const { contracts } = useActiveChain();
+  const { contracts, cUSDSymbol } = useActiveChain();
   const factoryAddr = contracts.ChamaFactory;
   const [members, setMembers] = useState<string[]>(["", "", ""]);
   const [contribution, setContribution] = useState("1");
@@ -350,7 +350,7 @@ export function CreateChamaForm() {
               onChange={(e) => setContribution(e.target.value)}
               className="w-full text-3xl font-semibold tracking-tight bg-transparent focus:outline-none nums"
             />
-            <span className="text-[var(--color-fg-muted)] text-sm">mcUSD</span>
+            <span className="text-[var(--color-fg-muted)] text-sm">{cUSDSymbol}</span>
           </div>
           <p className="text-xs text-[var(--color-fg-subtle)]">
             Each member contributes this amount every cycle. Same member receives the full pot once.
@@ -491,7 +491,7 @@ export function CreateChamaForm() {
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <div className="text-xs text-[var(--color-fg-muted)] flex items-center gap-2 nums">
           <Sparkles className="size-3.5 text-[var(--color-accent)]" />
-          {validation.nonEmpty.length} × {contribution || "0"} mcUSD per cycle ·{" "}
+          {validation.nonEmpty.length} × {contribution || "0"} {cUSDSymbol} per cycle ·{" "}
           {validation.nonEmpty.length} cycles total
         </div>
         {!connected ? (

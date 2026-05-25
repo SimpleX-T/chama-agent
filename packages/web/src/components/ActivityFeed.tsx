@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Banknote, Check, RotateCw, Sparkles, X } from "lucide-react";
+import { ArrowRight, Banknote, RotateCw, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { explorerTx, formatUnits, shortAddr } from "@/lib/format";
+import { explorerTxForChain, formatUnits, shortAddr } from "@/lib/format";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import type { ActivityEvent } from "@/hooks/useChamaActivity";
 
 type Props = {
@@ -38,6 +39,7 @@ const kindMeta: Record<ActivityEvent["kind"], { icon: React.ComponentType<any>; 
 };
 
 export function ActivityFeed({ events, memberLabel }: Props) {
+  const { chainId, cUSDSymbol } = useActiveChain();
   return (
     <div className="surface overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)]/60">
@@ -59,7 +61,7 @@ export function ActivityFeed({ events, memberLabel }: Props) {
             </motion.div>
           )}
           {events.map((e, i) => (
-            <Row key={e.txHash + i} e={e} memberLabel={memberLabel} />
+            <Row key={e.txHash + i} e={e} memberLabel={memberLabel} chainId={chainId} symbol={cUSDSymbol} />
           ))}
         </AnimatePresence>
       </div>
@@ -67,13 +69,23 @@ export function ActivityFeed({ events, memberLabel }: Props) {
   );
 }
 
-function Row({ e, memberLabel }: { e: ActivityEvent; memberLabel: (addr: string) => string }) {
+function Row({
+  e,
+  memberLabel,
+  chainId,
+  symbol,
+}: {
+  e: ActivityEvent;
+  memberLabel: (addr: string) => string;
+  chainId: number;
+  symbol: string;
+}) {
   const meta = kindMeta[e.kind];
   const Icon = meta.icon;
   const who = e.member ?? e.payee;
   return (
     <motion.a
-      href={explorerTx(e.txHash)}
+      href={explorerTxForChain(chainId, e.txHash)}
       target="_blank"
       rel="noreferrer"
       layout
@@ -107,7 +119,7 @@ function Row({ e, memberLabel }: { e: ActivityEvent; memberLabel: (addr: string)
         {e.amount !== undefined && e.amount > 0n && (
           <span className="ml-2 nums">
             {e.kind === "PayoutExecuted" ? "received " : "in "}
-            <span className="text-[var(--color-fg)] font-medium">{formatUnits(e.amount)}</span> mcUSD
+            <span className="text-[var(--color-fg)] font-medium">{formatUnits(e.amount)}</span> {symbol}
           </span>
         )}
         {who && (

@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useFactoryChamas, type FactoryChama } from "@/hooks/useFactoryChamas";
-import { chamaAbi, publicClient } from "@/lib/chain";
+import { chamaAbi } from "@/lib/chain";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { formatUnits, relativeTime, shortAddr } from "@/lib/format";
 
 type Decorated = FactoryChama & {
@@ -15,6 +16,7 @@ type Decorated = FactoryChama & {
 
 export function ChamasList() {
   const { data: chamas } = useFactoryChamas(12);
+  const { publicClient, cUSDSymbol } = useActiveChain();
   const [decorated, setDecorated] = useState<Decorated[]>([]);
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export function ChamasList() {
                     <Cell label="Members" value={c.memberCount?.toString() ?? "—"} />
                     <Cell
                       label="Contrib"
-                      value={c.contribution !== undefined ? `${formatUnits(c.contribution)} mcUSD` : "—"}
+                      value={c.contribution !== undefined ? `${formatUnits(c.contribution)} ${cUSDSymbol}` : "—"}
                     />
                   </div>
 

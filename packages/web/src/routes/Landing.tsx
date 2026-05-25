@@ -12,7 +12,7 @@ import { useChamaState } from "@/hooks/useChamaState";
 import { explorer, formatUnits, shortAddr } from "@/lib/format";
 
 export function Landing() {
-  const { contracts, deployMembers } = useActiveChain();
+  const { contracts, deployMembers, cUSDSymbol } = useActiveChain();
   const featuredAddr = contracts.Chama ?? contracts.ChamaFactory ?? null;
   const { data } = useChamaState(featuredAddr ?? undefined);
 
@@ -38,7 +38,7 @@ export function Landing() {
             <Stat
               label="Pot this cycle"
               value={data ? `${formatUnits(data.potThisCycle)}` : "—"}
-              hint="mcUSD"
+              hint={cUSDSymbol}
             />
             <Stat
               label="Members"
@@ -48,7 +48,7 @@ export function Landing() {
             <Stat
               label="Contribution"
               value={data ? formatUnits(data.contribution) : "—"}
-              hint="mcUSD per cycle"
+              hint={`${cUSDSymbol} per cycle`}
             />
           </div>
 
@@ -69,6 +69,7 @@ export function Landing() {
               completed={data?.completed}
               rounds={data?.rounds}
               totalCycles={data?.totalCycles}
+              symbol={cUSDSymbol}
             />
           </motion.div>
         </div>
@@ -100,9 +101,10 @@ export function Landing() {
               <div>
                 <h3 className="text-2xl font-semibold tracking-tight">3-member rotation</h3>
                 <p className="mt-3 text-[var(--color-fg-muted)] leading-relaxed">
-                  Three testnet wallets pooling 1 mcUSD per 5-minute cycle. Each member contributes
-                  3×; each is paid the full pot once. End state: every member breaks even — but
-                  three lump-sum payouts have happened, exactly when each member needed them.
+                  Members pool {cUSDSymbol} per cycle. Each member contributes once per cycle;
+                  each is paid the full pot once per round. End state: every member breaks even on
+                  net cUSD, but each one gets a lump-sum payout when their turn comes — exactly
+                  when they need it.
                 </p>
                 <div className="mt-6 grid grid-cols-2 gap-2 text-xs">
                   {(data?.members ?? deployMembers).map((m, i) => (
@@ -141,6 +143,7 @@ export function Landing() {
                   completed={data?.completed}
                   rounds={data?.rounds}
                   totalCycles={data?.totalCycles}
+                  symbol={cUSDSymbol}
                   size={400}
                 />
               </div>

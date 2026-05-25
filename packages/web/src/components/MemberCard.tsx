@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { AlertCircle, Check, Crown } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { explorer, formatUnits, shortAddr } from "@/lib/format";
+import { explorerForChain, formatUnits, shortAddr } from "@/lib/format";
+import { useActiveChain } from "@/hooks/useActiveChain";
 
 type Props = {
   index: number;
@@ -25,6 +26,7 @@ export function MemberCard({
   hasBeenPaid,
   nextPayoutCycle,
 }: Props) {
+  const { cUSDSymbol, chainId } = useActiveChain();
   const insufficientBalance = !hasContributed && balance < contribution;
   const shortfall = contribution - balance;
 
@@ -37,7 +39,7 @@ export function MemberCard({
 
   return (
     <motion.a
-      href={explorer(address)}
+      href={explorerForChain(chainId, address)}
       target="_blank"
       rel="noreferrer"
       initial={{ opacity: 0, y: 8 }}
@@ -73,7 +75,7 @@ export function MemberCard({
         </span>
         <span className="text-sm font-semibold nums">
           {formatUnits(balance)}{" "}
-          <span className="text-[var(--color-fg-subtle)] font-normal">mcUSD</span>
+          <span className="text-[var(--color-fg-subtle)] font-normal">{cUSDSymbol}</span>
         </span>
       </div>
 
@@ -92,8 +94,8 @@ export function MemberCard({
         <div className="mt-3 flex items-start gap-2 rounded-md border border-[oklch(0.7_0.22_25/0.35)] bg-[oklch(0.7_0.22_25/0.05)] px-2.5 py-2 text-[11px] text-[oklch(0.85_0.18_25)]">
           <AlertCircle className="size-3.5 mt-px shrink-0" />
           <span className="leading-snug">
-            Needs <span className="font-semibold nums">{formatUnits(shortfall)}</span> more mcUSD to pay
-            in. Their wallet must mint &amp; approve from the chama page.
+            Needs <span className="font-semibold nums">{formatUnits(shortfall)}</span> more{" "}
+            {cUSDSymbol} to pay in. Their wallet must fund &amp; approve from the chama page.
           </span>
         </div>
       )}

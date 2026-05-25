@@ -13,6 +13,8 @@ type Props = {
   isActive?: boolean;
   rounds?: bigint;
   totalCycles?: bigint;
+  /** "cUSD" on mainnet, "mcUSD" on Sepolia */
+  symbol?: string;
   size?: number;
 };
 
@@ -36,6 +38,7 @@ export function RotationVisualizer({
   isActive,
   rounds,
   totalCycles,
+  symbol = "cUSD",
   size = 560,
 }: Props) {
   const N = Number(memberCount);
@@ -316,7 +319,7 @@ export function RotationVisualizer({
             opacity={0.72}
             letterSpacing="0.16em"
           >
-            POT · mcUSD
+            POT · {symbol}
           </text>
         </motion.g>
 
@@ -469,7 +472,7 @@ export function RotationVisualizer({
       {!completed && (
         <div className="pointer-events-none absolute top-1 right-1 surface-tile px-3 py-1.5 text-xs nums">
           <span className="text-[var(--color-fg-subtle)] mr-2">CONTRIB</span>
-          {formatUnits(contribution)} mcUSD
+          {formatUnits(contribution)} {symbol}
         </div>
       )}
 
