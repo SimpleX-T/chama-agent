@@ -43,18 +43,30 @@ Submitted to:
 
 **Trust model:** the agent has zero financial trust. Members approve the Chama contract directly (not the agent) for cUSD spend. The agent's key signs only `contributeFor()` and `executePayout()` — and the contract enforces every invariant (one contribution per cycle, agent-only payout, fixed payout order, no withdrawal beyond payouts). Compromise the agent's key and you can drain *zero* funds; the worst you can do is grief the cycle clock.
 
-## Live on Celo Sepolia (testnet)
+## Live on Celo mainnet (production)
 
 | Contract | Address | Explorer |
 |---|---|---|
-| **ChamaFactory** (creates new chamas) | `0xa3f4e34254a3fd1278d6DD9bF02F1b12069210Ac` | [view](https://celo-sepolia.blockscout.com/address/0xa3f4e34254a3fd1278d6DD9bF02F1b12069210Ac) |
-| Seed Chama (3-member demo, 1 mcUSD/cycle) | `0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8` | [view](https://celo-sepolia.blockscout.com/address/0x461fC102Fdbdea96a0027856BE1CE1E7970B02B8) |
-| MockCUSD (testnet stand-in for cUSD) | `0x6bEFAA89019d5B4eb9978069F44956f7c3649630` | [view](https://celo-sepolia.blockscout.com/address/0x6bEFAA89019d5B4eb9978069F44956f7c3649630) |
-| Agent wallet | `0x7E65877b560Db3863baB4BC32F60e3c6693a9B06` | [view](https://celo-sepolia.blockscout.com/address/0x7E65877b560Db3863baB4BC32F60e3c6693a9B06) |
-| **ERC-8004 Agent ID** | **#274** | [**8004scan**](https://8004scan.io/agents/celo-sepolia/274) |
-| Self IdentityVerificationHub | `0x16ECBA51e18a4a7e61fdC417f0d47AFEeDfbed74` | (verification target — UI uses staging mode with mock passports) |
+| **ChamaFactory** | `0x8cA82b18093880524f9EAbEf1bEFE5B864032918` | [Celoscan](https://celoscan.io/address/0x8cA82b18093880524f9EAbEf1bEFE5B864032918) |
+| **ChamaVerifier** (Self consumer) | `0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4` | [Celoscan](https://celoscan.io/address/0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4) |
+| cUSD (real Mento) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` | [Celoscan](https://celoscan.io/address/0x765DE816845861e75A25fCA122bb6898B8B1282a) |
+| Agent wallet | `0x60347C5337480460B7E274A3C05eBE445ec0b0b9` | [Celoscan](https://celoscan.io/address/0x60347C5337480460B7E274A3C05eBE445ec0b0b9) |
+| **ERC-8004 Agent ID** | **#9146** | [**8004scan**](https://8004scan.io/agents/celo/9146) |
+| Self IdentityVerificationHub | `0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF` | (mainnet — real passports required) |
 
-The seed chama above has already completed a full 3-member rotation end-to-end driven by the agent (70+ on-chain txs tied to the agent wallet). Use the dashboard to inspect live state, or deploy your own chama via the factory.
+The agent service is hosted on Render as a 24/7 background worker (`CHAIN_ID=42220`). It polls the ChamaFactory every ~15s for new chamas and operates each one's cycle clock — though every workflow function is permissionless, so the chama still advances even when the courtesy agent is offline.
+
+## Also live on Celo Sepolia (testnet · iteration playground)
+
+| Contract | Address | Explorer |
+|---|---|---|
+| ChamaFactory | `0x0c2819cdDF09eCE1Fa4a0C4Cb42872Fb6D4306Cd` | [Blockscout](https://celo-sepolia.blockscout.com/address/0x0c2819cdDF09eCE1Fa4a0C4Cb42872Fb6D4306Cd) |
+| ChamaVerifier (Self staging) | `0xeA64FD5169B067b9dcfe6D318858cBc712953e62` | [Blockscout](https://celo-sepolia.blockscout.com/address/0xeA64FD5169B067b9dcfe6D318858cBc712953e62) |
+| MockCUSD | `0x6798E399dd1862AfF50A8e9B906f09ccEfF76AC0` | [Blockscout](https://celo-sepolia.blockscout.com/address/0x6798E399dd1862AfF50A8e9B906f09ccEfF76AC0) |
+| Sepolia agent wallet | `0x7E65877b560Db3863baB4BC32F60e3c6693a9B06` | [Blockscout](https://celo-sepolia.blockscout.com/address/0x7E65877b560Db3863baB4BC32F60e3c6693a9B06) |
+| Sepolia Agent ID | #274 | [8004scan](https://8004scan.io/agents/celo-sepolia/274) |
+
+The Sepolia agent has driven 200+ on-chain transactions across 7 progressive deploys — that's where the iteration happened. Mainnet is the production endpoint with bytecode-identical contracts.
 
 ## Repo layout
 

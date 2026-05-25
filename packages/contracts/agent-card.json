@@ -10,6 +10,10 @@
     {
       "name": "web",
       "endpoint": "https://github.com/SimpleX-T/chama-agent"
+    },
+    {
+      "name": "agent-ops",
+      "endpoint": "https://celoscan.io/address/0x60347C5337480460B7E274A3C05eBE445ec0b0b9"
     }
   ],
   "registrations": [
