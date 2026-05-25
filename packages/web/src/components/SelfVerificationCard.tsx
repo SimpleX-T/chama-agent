@@ -68,7 +68,7 @@ function humanizeError(err: SelfErrorState): { title: string; body: string } {
 
 export function SelfVerificationCard({ className, onVerified, title }: Props) {
   const { address, isConnected } = useAccount();
-  const { verified, markVerified } = useSelfVerification();
+  const { verified, markVerified, bypassed } = useSelfVerification();
   const { contracts, self, isTestnet, chainName } = useActiveChain();
   const verifierAddr = contracts.ChamaVerifier;
   const [scanning, setScanning] = useState(false);
@@ -124,16 +124,20 @@ export function SelfVerificationCard({ className, onVerified, title }: Props) {
 
   if (verified) {
     return (
-      <Shell className={className} title={title ?? "Identity verified"}>
+      <Shell
+        className={className}
+        title={title ?? (bypassed ? "Pre-approved wallet" : "Identity verified")}
+      >
         <div className="mt-3 flex items-start gap-3">
           <CheckCircle2 className="size-5 text-[oklch(0.78_0.18_152)] mt-0.5" />
           <div className="text-sm">
             <div className="font-medium text-[var(--color-fg)]">
-              Verified via Self.
+              {bypassed ? "Wallet allowlisted by the project owner." : "Verified via Self."}
             </div>
             <div className="mt-1 text-[var(--color-fg-muted)] text-pretty leading-relaxed">
-              This wallet has proven uniqueness + humanity. ChamaAgent doesn't see your passport
-              data — only the zero-knowledge proof was checked.
+              {bypassed
+                ? "This wallet bypasses the Self passport scan via the VITE_SELF_BYPASS_WALLETS allowlist. Useful for the project owner + judges on mainnet, where Self only accepts real passport proofs. End users still go through the full ZK passport flow."
+                : "This wallet has proven uniqueness + humanity. ChamaAgent doesn't see your passport data — only the zero-knowledge proof was checked."}
             </div>
           </div>
         </div>

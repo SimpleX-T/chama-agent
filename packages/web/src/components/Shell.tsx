@@ -2,7 +2,9 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { MiniPayBanner } from "@/components/MiniPayBanner";
 import { NetworkBadge } from "@/components/NetworkBadge";
+import { useMiniPay } from "@/hooks/useMiniPay";
 
 const nav = [
   { to: "/", label: "Overview" },
@@ -12,8 +14,11 @@ const nav = [
 
 export function Shell() {
   const loc = useLocation();
+  // Mount the hook to fire MiniPay auto-connect on first render
+  useMiniPay();
   return (
     <div className="flex min-h-dvh flex-col">
+      <MiniPayBanner />
       <header className="sticky top-0 z-50 border-b border-[var(--color-border)]/60 bg-[var(--color-bg)]/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link to="/" className="flex items-center gap-2.5 group">

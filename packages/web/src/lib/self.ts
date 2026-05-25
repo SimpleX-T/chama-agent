@@ -33,6 +33,34 @@ export const SELF_APP_CONFIG = {
 const STORAGE_PREFIX = "chamaagent:self-verified:";
 export const SELF_VERIFIED_EVENT = "chamaagent:self-verified";
 
+/**
+ * Allowlist of wallets pre-approved as "verified" without going through a
+ * real Self passport scan. Populated via `VITE_SELF_BYPASS_WALLETS` —
+ * comma-separated 0x addresses. Use case: the project owner's wallet on
+ * mainnet (where Self only accepts real passport proofs) needs to be able
+ * to create chamas during demos and judging without a passport scan.
+ *
+ * Members in this list are not "verified humans" in the Self sense — the
+ * UI marks them with a distinct "pre-approved" badge so it's transparent.
+ */
+let _cached: Set<string> | null = null;
+export function getBypassAddresses(): Set<string> {
+  if (_cached) return _cached;
+  const raw = (import.meta as any).env?.VITE_SELF_BYPASS_WALLETS as string | undefined;
+  _cached = new Set(
+    (raw ?? "")
+      .split(",")
+      .map((a) => a.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return _cached;
+}
+
+export function isBypassedAddress(address: string | undefined | null): boolean {
+  if (!address) return false;
+  return getBypassAddresses().has(address.toLowerCase());
+}
+
 export function getStoredVerification(address: string | undefined): {
   verified: boolean;
   at?: number;
