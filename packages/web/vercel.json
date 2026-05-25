@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @chama/web build",
-  "outputDirectory": "packages/web/dist",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "_comment": "Used when Vercel's Root Directory is set to packages/web. The root vercel.json is what's used when Root Directory = repo root. One of the two is read; never both. Keep both in sync.",
+  "buildCommand": "cd ../.. && pnpm --filter @chama/web build",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "rewrites": [
     {
       "source": "/((?!_next/|assets/|.*\\.[a-zA-Z0-9]+$).*)",
