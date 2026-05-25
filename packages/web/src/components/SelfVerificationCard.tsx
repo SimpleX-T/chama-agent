@@ -4,7 +4,8 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, CheckCircle2, RotateCw, ShieldCheck, ShieldQuestion } from "lucide-react";
 import { useAccount } from "wagmi";
 import { cn } from "@/lib/cn";
-import { CHAMA_VERIFIER_ADDR, SELF_APP_CONFIG, SELF_HUB_SEPOLIA } from "@/lib/self";
+import { SELF_APP_CONFIG } from "@/lib/self";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { useSelfVerification } from "@/hooks/useSelfVerification";
 
 // Lazy: keeps the Self SDK (~440KB gz) out of the main bundle until needed
@@ -40,7 +41,7 @@ const errorCopy: Record<string, { title: string; body: string }> = {
   proof_generation_failed: {
     title: "Proof generation failed",
     body:
-      "Self attempted to submit your proof to the on-chain verifier and the transaction reverted. On Celo Sepolia we currently point the QR at Self's IdentityVerificationHub directly, which only accepts proofs against scopes registered to a consumer contract. Deploying our ChamaVerifier (next milestone) will resolve this.",
+      "Self submitted your proof to the on-chain verifier and the transaction reverted. The most common cause on mainnet is using a mock / staging passport — mainnet only accepts real passport scans from the Self mobile app. On Sepolia (staging) mock passports are fine. If you're on the right chain with the right passport type, double-check the scope + disclosures match the deployed ChamaVerifier.",
   },
   user_canceled: {
     title: "Verification cancelled",
@@ -68,30 +69,31 @@ function humanizeError(err: SelfErrorState): { title: string; body: string } {
 export function SelfVerificationCard({ className, onVerified, title }: Props) {
   const { address, isConnected } = useAccount();
   const { verified, markVerified } = useSelfVerification();
+  const { contracts, self, isTestnet, chainName } = useActiveChain();
+  const verifierAddr = contracts.ChamaVerifier;
   const [scanning, setScanning] = useState(false);
   const [selfApp, setSelfApp] = useState<any>(null);
   const [error, setError] = useState<SelfErrorState | null>(null);
 
   useEffect(() => {
-    if (!isConnected || !address || !scanning) {
+    if (!isConnected || !address || !scanning || !verifierAddr) {
       setSelfApp(null);
       return;
     }
     let cancelled = false;
     (async () => {
       const { SelfAppBuilder } = await import("@selfxyz/qrcode");
-      // endpoint = OUR ChamaVerifier (consumer of Self's hub).
-      // Falls back to the hub itself if the verifier isn't deployed for this
-      // chain — proofs will fail in that case, but the SDK still renders.
-      const endpoint = CHAMA_VERIFIER_ADDR ?? SELF_HUB_SEPOLIA;
+      // endpoint = OUR ChamaVerifier on the connected chain.
+      // endpointType: "celo" on mainnet (real passports), "staging_celo" on
+      // Sepolia (mock passports OK).
       const app = new SelfAppBuilder({
         version: 2,
         appName: SELF_APP_CONFIG.appName,
         scope: SELF_APP_CONFIG.scope,
-        endpoint,
+        endpoint: verifierAddr,
         logoBase64: SELF_APP_CONFIG.logoBase64,
         userId: address,
-        endpointType: "staging_celo",
+        endpointType: self.endpointType,
         userIdType: "hex",
         // Must mirror ChamaVerifier's registered config exactly:
         //   olderThan: 0, forbiddenCountries: [], ofacEnabled: true
@@ -104,7 +106,7 @@ export function SelfVerificationCard({ className, onVerified, title }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [address, isConnected, scanning]);
+  }, [address, isConnected, scanning, verifierAddr, self.endpointType]);
 
   if (!isConnected) {
     return (
@@ -259,18 +261,29 @@ export function SelfVerificationCard({ className, onVerified, title }: Props) {
               Start verification
             </button>
             <p className="mt-3 text-xs text-[var(--color-fg-subtle)] leading-relaxed">
-              Staging mode (mock passports OK). Proofs are verified by our{" "}
+              {isTestnet ? (
+                <>
+                  <span className="text-[oklch(0.78_0.18_230)] font-medium">{chainName}</span> ·
+                  staging mode — mock passports OK.{" "}
+                </>
+              ) : (
+                <>
+                  <span className="text-[oklch(0.78_0.18_152)] font-medium">{chainName}</span> ·
+                  production mode — <span className="text-[var(--color-fg)]">real passport scan required</span>
+                  . Switch your wallet to Celo Sepolia for staging tests.{" "}
+                </>
+              )}
+              Proofs verified by our{" "}
               <a
-                href={`https://celo-sepolia.blockscout.com/address/${CHAMA_VERIFIER_ADDR ?? ""}`}
+                href={`${isTestnet ? "https://celo-sepolia.blockscout.com" : "https://celoscan.io"}/address/${verifierAddr ?? ""}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors font-mono"
               >
                 ChamaVerifier
               </a>{" "}
-              contract — it extends Self's <span className="font-mono">SelfVerificationRoot</span>,
-              records <span className="font-mono">verified[user]=true</span>, and is what the
-              Chama escrow will gate membership on next.
+              contract, which extends Self's <span className="font-mono">SelfVerificationRoot</span>{" "}
+              and records <span className="font-mono">verified[user]=true</span> on success.
             </p>
           </motion.div>
         )}
