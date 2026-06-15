@@ -1,14 +1,14 @@
 {
   "network": "celo",
   "chainId": "42220",
-  "deployer": "0x",
-  "agent": "0x",
+  "deployer": "0x60347C5337480460B7E274A3C05eBE445ec0b0b9",
+  "agent": "0x60347C5337480460B7E274A3C05eBE445ec0b0b9",
   "contracts": {
     "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
     "ChamaFactory": "0x8cA82b18093880524f9EAbEf1bEFE5B864032918",
     "ChamaVerifier": "0x90D6641808b8Ff80DF43269ad094491AA4383B67"
   },
-  "note": "Mainnet placeholder. Filled in by deploy-factory:mainnet + deploy-verifier:mainnet + register-agent:mainnet.",
+  "note": "Celo mainnet production deployment using real Mento cUSD.",
   "factoryDeployedAt": "2026-05-24T22:17:10.167Z",
   "self": {
     "hub": "0xe57F4773bd9c9d8b6Cd70431117d353298B9f5BF",

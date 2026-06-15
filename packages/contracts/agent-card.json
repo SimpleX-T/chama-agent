@@ -39,7 +39,7 @@
   "contracts": {
     "42220": {
       "ChamaFactory": "0x8cA82b18093880524f9EAbEf1bEFE5B864032918",
-      "ChamaVerifier": "0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4",
+      "ChamaVerifier": "0x90D6641808b8Ff80DF43269ad094491AA4383B67",
       "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
     },
     "11142220": {

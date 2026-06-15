@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { MiniPayBanner } from "@/components/MiniPayBanner";
 import { NetworkBadge } from "@/components/NetworkBadge";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { useMiniPay } from "@/hooks/useMiniPay";
 
 const nav = [
@@ -14,6 +15,9 @@ const nav = [
 
 export function Shell() {
   const loc = useLocation();
+  const { chainId, chainName, erc8004 } = useActiveChain();
+  const agentId = erc8004.agentId?.toString() ?? "9146";
+  const scanSlug = erc8004.scanSlug;
   // Mount the hook to fire MiniPay auto-connect on first render
   useMiniPay();
   return (
@@ -83,7 +87,9 @@ export function Shell() {
           <div className="space-y-2">
             <div className="text-[var(--color-fg-subtle)] uppercase tracking-wider text-xs mb-3">Resources</div>
             <FooterLink href="https://github.com/SimpleX-T/chama-agent">GitHub</FooterLink>
-            <FooterLink href="https://8004scan.io/agents/celo-sepolia/274">8004scan · Agent #274</FooterLink>
+            <FooterLink href={`https://8004scan.io/agents/${scanSlug}/${agentId}`}>
+              8004scan · Agent #{agentId}
+            </FooterLink>
             <FooterLink href="https://eips.ethereum.org/EIPS/eip-8004">ERC-8004 spec</FooterLink>
             <FooterLink href="https://docs.celo.org">Celo docs</FooterLink>
           </div>
@@ -96,7 +102,7 @@ export function Shell() {
         <div className="border-t border-[var(--color-border)]/60">
           <div className="mx-auto max-w-6xl px-5 sm:px-8 py-5 text-xs text-[var(--color-fg-subtle)] flex flex-wrap items-center justify-between gap-2">
             <span>MIT · 2026</span>
-            <span className="font-mono">Celo Sepolia · chain 11142220</span>
+            <span className="font-mono">{chainName} · chain {chainId}</span>
           </div>
         </div>
       </footer>

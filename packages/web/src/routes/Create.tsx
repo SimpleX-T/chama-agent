@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
 import { CreateChamaForm } from "@/components/CreateChamaForm";
 import { SelfVerificationCard } from "@/components/SelfVerificationCard";
+import { useActiveChain } from "@/hooks/useActiveChain";
 import { useSelfVerification } from "@/hooks/useSelfVerification";
 
 export function Create() {
   const { verified } = useSelfVerification();
+  const { erc8004 } = useActiveChain();
+  const agentId = erc8004.agentId?.toString() ?? "9146";
 
   return (
     <div className="mx-auto max-w-3xl px-5 sm:px-8 pt-16 pb-32">
@@ -21,7 +24,7 @@ export function Create() {
         </h1>
         <p className="mt-5 text-lg text-[var(--color-fg-muted)] max-w-2xl leading-relaxed text-balance">
           One transaction deploys a per-group escrow contract. The same{" "}
-          <span className="text-[var(--color-fg)] font-medium">ChamaAgent #274</span> will operate
+          <span className="text-[var(--color-fg)] font-medium">ChamaAgent #{agentId}</span> will operate
           it alongside the demo. Members approve the new contract directly when they're ready to
           participate — and their funds never leave the escrow except into the rotation.
         </p>

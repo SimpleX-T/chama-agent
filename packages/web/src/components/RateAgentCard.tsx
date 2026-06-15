@@ -52,6 +52,7 @@ export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Pro
   }, [isSuccess, refetch]);
 
   if (lastPaidCycle === null) return null; // no cycle has paid out yet
+  const paidCycle = lastPaidCycle;
 
   const submitted = isSuccess;
   const attestedCountTotal = lastIndex ? Number(lastIndex as bigint) : 0;
@@ -68,7 +69,7 @@ export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Pro
         BigInt(score * 20), // 5 → 100, 4 → 80, 3 → 60
         0,
         "rosca-cycle",
-        `cycle-${lastPaidCycle.toString()}`,
+        `cycle-${paidCycle.toString()}`,
         `${explorer}/address/${chamaAddress}`,
         "",
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -92,7 +93,7 @@ export function RateAgentCard({ chamaAddress, currentCycle, lastPaidCycle }: Pro
         </span>
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold tracking-tight">
-            Rate the agent — cycle {lastPaidCycle.toString()}
+            Rate the agent — cycle {paidCycle.toString()}
           </h3>
           <p className="mt-1.5 text-sm text-[var(--color-fg-muted)] leading-relaxed text-pretty">
             Post an on-chain attestation to{" "}

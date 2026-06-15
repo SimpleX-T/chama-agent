@@ -29,7 +29,7 @@ Submitted to:
 ┌─────────────────────┐    ┌────────────────────┐    ┌───────────────────────┐
 │   ChamaFactory.sol  │───▶│     Chama.sol      │◀───│   ChamaAgent service   │
 │  permissionless     │    │   per-group escrow │    │  (TS + viem cron)     │
-│  createChama()      │    │   cUSD ERC-20      │    │  ERC-8004 Agent #274 │
+│  createChama()      │    │   cUSD ERC-20      │    │ ERC-8004 Agent #9146│
 └─────────────────────┘    │   immutable agent  │    │  watches the factory  │
                            └────────┬───────────┘    └───────────────────────┘
                                     │ events
@@ -48,7 +48,7 @@ Submitted to:
 | Contract | Address | Explorer |
 |---|---|---|
 | **ChamaFactory** | `0x8cA82b18093880524f9EAbEf1bEFE5B864032918` | [Celoscan](https://celoscan.io/address/0x8cA82b18093880524f9EAbEf1bEFE5B864032918) |
-| **ChamaVerifier** (Self consumer) | `0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4` | [Celoscan](https://celoscan.io/address/0x95006724DAF308D5c1E416E4ba4793f6ED4B23c4) |
+| **ChamaVerifier** (Self consumer) | `0x90D6641808b8Ff80DF43269ad094491AA4383B67` | [Celoscan](https://celoscan.io/address/0x90D6641808b8Ff80DF43269ad094491AA4383B67) |
 | cUSD (real Mento) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` | [Celoscan](https://celoscan.io/address/0x765DE816845861e75A25fCA122bb6898B8B1282a) |
 | Agent wallet | `0x60347C5337480460B7E274A3C05eBE445ec0b0b9` | [Celoscan](https://celoscan.io/address/0x60347C5337480460B7E274A3C05eBE445ec0b0b9) |
 | **ERC-8004 Agent ID** | **#9146** | [**8004scan**](https://8004scan.io/agents/celo/9146) |
@@ -134,14 +134,16 @@ For a manual rotation (no agent), use `pnpm --filter @chama/contracts demo:sepol
 | Agent | TypeScript 5.6 (ESM) · viem 2 with fallback transport across forno + drpc + thirdweb · pino |
 | Web | Vite 6 · React 19 · Tailwind v4 (CSS-config) · framer-motion 11 · wagmi v2 · RainbowKit v2 · @tanstack/react-query · react-router-dom v7 · lucide-react · Geist + Instrument Serif typography |
 | Identity | Self Protocol (`@selfxyz/qrcode`, `@selfxyz/core`) — staging_celo mode against the IdentityVerificationHub |
-| Agent identity | ERC-8004 Identity Registry (Celo Sepolia 0x8004A8…BD9e) — Agent #274 |
+| Agent identity | ERC-8004 Identity Registry on Celo mainnet (`0x8004A1…a432`) — Agent #9146; Sepolia Agent #274 retained for testnet demos |
 | Hosting | Multi-stage Dockerfile · Fly.io · Railway |
 
 ## ERC-8004
 
+- **Identity Registry (Celo mainnet):** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 - **Identity Registry (Celo Sepolia):** `0x8004A818BFB912233c491871b3d84c89A494BD9e`
 - **AgentCard:** [`packages/contracts/agent-card.json`](./packages/contracts/agent-card.json) — served from this repo via `raw.githubusercontent.com`. Spec-compliant: `type`, `services` (not deprecated `endpoints`), `image`, `registrations`, `active`.
-- **Registered ChamaAgent:** [agent ID 274 on 8004scan](https://8004scan.io/agents/celo-sepolia/274) · [registration tx](https://celo-sepolia.blockscout.com/tx/0xc93704898c996202109c1567985db6fa8eb5e81702870a087657c90fc88bd04e)
+- **Registered ChamaAgent:** [mainnet agent ID 9146 on 8004scan](https://8004scan.io/agents/celo/9146) · [registration tx](https://celoscan.io/tx/0x15aa52c40768367a5e36b9c9475ef8532dd9b814731a7654e1de54b5608ce6a4)
+- **Testnet registration:** [Sepolia agent ID 274 on 8004scan](https://8004scan.io/agents/celo-sepolia/274) · [registration tx](https://celo-sepolia.blockscout.com/tx/0xc93704898c996202109c1567985db6fa8eb5e81702870a087657c90fc88bd04e)
 - **Identity icon:** [icon.svg](./packages/contracts/icon.svg) — three nodes connected by rotation arrows
 
 Re-register after AgentCard updates via `pnpm --filter @chama/contracts register-agent`.
@@ -175,13 +177,13 @@ Already shipped:
 - [x] Web dashboard: Landing + ChamaDetail + Create routes, live RotationVisualizer, animated member cards, activity feed, countdown ring
 - [x] Wallet connect (wagmi v2 + RainbowKit v2)
 - [x] Member self-serve (mint test mcUSD + approve chama from the UI)
-- [x] ERC-8004 Identity Registry registration (Agent #274, AgentCard hosted on GitHub raw, spec-compliant)
+- [x] ERC-8004 Identity Registry registration (mainnet Agent #9146 + Sepolia Agent #274, AgentCard hosted on GitHub raw, spec-compliant)
 - [x] Self Protocol QR verification (UI level, MVP)
 - [x] Dockerfile + Fly.io + Railway configs
 
 Next:
 - [ ] `ChamaVerifiedRegistry` contract that on-chain-gates membership behind Self verification callback
-- [ ] Mainnet deployment (real cUSD at `0x765DE8…`, agent paid in CELO gas, 24/7 on Fly.io)
+- [x] Mainnet deployment (real cUSD at `0x765DE8…`, agent paid in CELO gas, 24/7 background worker)
 - [ ] MiniPay mini-app — Telegram-style flow inside MiniPay's UI
 - [ ] ERC-8004 Reputation Registry — per-cycle members post a positive attestation against the agent, lifting its 8004scan rank
 - [ ] EIP-2612 permit-based contributions — members sign once, agent pays gas for every cycle

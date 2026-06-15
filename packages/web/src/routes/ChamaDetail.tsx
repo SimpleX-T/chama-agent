@@ -16,6 +16,8 @@ import { useChamaState } from "@/hooks/useChamaState";
 import { useActiveChain } from "@/hooks/useActiveChain";
 import { explorer, formatUnits, shortAddr } from "@/lib/format";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+
 export function ChamaDetail() {
   const { address: paramAddress } = useParams<{ address: string }>();
   const { contracts, agentAddress, cUSDSymbol } = useActiveChain();
@@ -25,7 +27,7 @@ export function ChamaDetail() {
     : (contracts.Chama ?? contracts.ChamaFactory ?? null));
 
   const { data, error, waitingForDeployment } = useChamaState(address ?? undefined);
-  const { events } = useChamaActivity(address ?? ("0x0000000000000000000000000000000000000000" as `0x${string}`));
+  const { events } = useChamaActivity(address ?? ZERO_ADDRESS);
 
   const payedMembersThroughCycle = data && !data.completed ? Number(data.currentCycle) : data?.memberCount ?? 0n;
 
@@ -55,15 +57,17 @@ export function ChamaDetail() {
             {data?.completed ? "Rotation complete" : "Live rotation"}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <a
-              href={explorer(address)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
-            >
-              {address}
-              <ExternalLink className="size-3.5" />
-            </a>
+            {address && (
+              <a
+                href={explorer(address)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 font-mono text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-accent)] transition-colors"
+              >
+                {address}
+                <ExternalLink className="size-3.5" />
+              </a>
+            )}
             {address && <ShareInviteButton address={address} />}
           </div>
         </div>
@@ -162,7 +166,7 @@ export function ChamaDetail() {
       </section>
 
       {/* Cycle actions — permissionless trigger for whoever's around */}
-      {data && !data.completed && (
+      {address && data && !data.completed && (
         <section>
           <SectionHead title="Cycle status" hint="Permissionless — anyone can advance" />
           <CycleActions
@@ -182,7 +186,7 @@ export function ChamaDetail() {
       )}
 
       {/* Member self-serve actions */}
-      {data && !data.completed && (
+      {address && data && !data.completed && (
         <section>
           <SectionHead title="Your participation" hint="Member-side onboarding" />
           <MemberActions
@@ -194,7 +198,7 @@ export function ChamaDetail() {
       )}
 
       {/* Reputation attestation panel — appears as soon as one cycle has paid out */}
-      {data && data.currentCycle > 0n && (
+      {address && data && data.currentCycle > 0n && (
         <section>
           <SectionHead title="Reputation" hint="On-chain attestation · ERC-8004" />
           <RateAgentCard
@@ -257,7 +261,7 @@ export function ChamaDetail() {
       <section>
         <SectionHead title="Contracts" />
         <div className="surface divide-y divide-[var(--color-border)]/60">
-          <AddrRow label="Chama" addr={address} />
+          {address && <AddrRow label="Chama" addr={address} />}
           <AddrRow label={cUSDSymbol} addr={contracts.cUSD} />
           {agentAddress && <AddrRow label="Agent wallet" addr={agentAddress} />}
         </div>
